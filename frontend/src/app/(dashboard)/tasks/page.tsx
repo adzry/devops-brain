@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import useSWR from 'swr';
 import {
   ListTodo,
   Play,
@@ -24,74 +25,8 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { cn, formatRelativeTime } from '@/lib/utils';
-
-// Mock data
-const tasks = [
-  {
-    id: 'task-001',
-    title: 'Security vulnerability scan on main branch',
-    agent: 'Security Agent',
-    status: 'completed',
-    created_at: new Date(Date.now() - 120000).toISOString(),
-    completed_at: new Date(Date.now() - 60000).toISOString(),
-    duration: '1m 2s',
-    result: { vulnerabilities_found: 3, critical: 0, high: 1, medium: 2 },
-  },
-  {
-    id: 'task-002',
-    title: 'Generate React components from Figma design',
-    agent: 'Design Agent',
-    status: 'running',
-    created_at: new Date(Date.now() - 300000).toISOString(),
-    progress: 65,
-  },
-  {
-    id: 'task-003',
-    title: 'Run test suite with coverage analysis',
-    agent: 'Testing Agent',
-    status: 'pending',
-    created_at: new Date(Date.now() - 600000).toISOString(),
-  },
-  {
-    id: 'task-004',
-    title: 'Deploy application to staging environment',
-    agent: 'Deployment Agent',
-    status: 'completed',
-    created_at: new Date(Date.now() - 900000).toISOString(),
-    completed_at: new Date(Date.now() - 850000).toISOString(),
-    duration: '50s',
-    result: { environment: 'staging', version: 'v1.2.3' },
-  },
-  {
-    id: 'task-005',
-    title: 'Code review for PR #142',
-    agent: 'Code Review Agent',
-    status: 'completed',
-    created_at: new Date(Date.now() - 1200000).toISOString(),
-    completed_at: new Date(Date.now() - 1100000).toISOString(),
-    duration: '1m 40s',
-    result: { issues: 2, suggestions: 5, approved: true },
-  },
-  {
-    id: 'task-006',
-    title: 'Database migration v45',
-    agent: 'Database Agent',
-    status: 'failed',
-    created_at: new Date(Date.now() - 1800000).toISOString(),
-    completed_at: new Date(Date.now() - 1700000).toISOString(),
-    error: 'Foreign key constraint violation',
-  },
-  {
-    id: 'task-007',
-    title: 'Performance profiling for API endpoints',
-    agent: 'Performance Agent',
-    status: 'completed',
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-    completed_at: new Date(Date.now() - 3500000).toISOString(),
-    duration: '1m 40s',
-    result: { bottlenecks: 2, p99_latency: '245ms' },
-  },
-];
+import api, { type Task } from '@/lib/api';
+import { useStore } from '@/store';
 
 const statusConfig = {
   completed: { icon: CheckCircle, color: 'text-emerald-400', bg: 'bg-emerald-500/20', variant: 'success' as const },
@@ -101,13 +36,26 @@ const statusConfig = {
 };
 
 export default function TasksPage() {
-  const [selectedTask, setSelectedTask] = useState<typeof tasks[0] | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [filter, setFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const { tasks, setTasks } = useStore();
+
+  // Fetch tasks
+  const { data: tasksData, mutate: mutateTasks } = useSWR('/api/v1/tasks', () => api.getTasks(50), {
+    refreshInterval: 3000,
+  });
+
+  useEffect(() => {
+    if (tasksData?.data) {
+      setTasks(tasksData.data);
+    }
+  }, [tasksData, setTasks]);
 
   const filteredTasks = tasks.filter((task) => {
     if (filter !== 'all' && task.status !== filter) return false;
-    if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    const searchText = task.action || task.id || '';
+    if (searchQuery && !searchText.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
 
@@ -117,6 +65,10 @@ export default function TasksPage() {
     running: tasks.filter(t => t.status === 'running').length,
     pending: tasks.filter(t => t.status === 'pending').length,
     failed: tasks.filter(t => t.status === 'failed').length,
+  };
+
+  const handleRefresh = () => {
+    mutateTasks();
   };
 
   return (
@@ -154,7 +106,7 @@ export default function TasksPage() {
                 className="py-2"
               />
             </div>
-            <Button variant="secondary" size="sm" icon={<RefreshCw className="w-4 h-4" />}>
+            <Button variant="secondary" size="sm" icon={<RefreshCw className="w-4 h-4" />} onClick={handleRefresh}>
               Refresh
             </Button>
           </div>
@@ -193,31 +145,30 @@ export default function TasksPage() {
                         <StatusIcon className={cn('w-4 h-4', config.color, task.status === 'running' && 'animate-spin')} />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-white truncate">{task.title}</p>
+                        <p className="text-sm font-medium text-white truncate">{task.action || 'Task'}</p>
                         <p className="text-xs text-slate-500">{task.id}</p>
                       </div>
                     </div>
 
                     {/* Agent */}
                     <div className="col-span-2">
-                      <span className="text-sm text-slate-400">{task.agent}</span>
+                      <span className="text-sm text-slate-400">{task.agent || 'N/A'}</span>
                     </div>
 
                     {/* Status */}
                     <div className="col-span-2">
                       <Badge variant={config.variant} dot>
                         {task.status}
-                        {task.status === 'running' && task.progress && (
-                          <span className="ml-1">({task.progress}%)</span>
-                        )}
                       </Badge>
                     </div>
 
                     {/* Time */}
                     <div className="col-span-2">
-                      <p className="text-sm text-slate-400">{formatRelativeTime(task.created_at)}</p>
-                      {task.duration && (
-                        <p className="text-xs text-slate-500">Duration: {task.duration}</p>
+                      <p className="text-sm text-slate-400">{task.created_at ? formatRelativeTime(task.created_at) : 'N/A'}</p>
+                      {task.completed_at && task.created_at && (
+                        <p className="text-xs text-slate-500">
+                          Duration: {Math.round((new Date(task.completed_at).getTime() - new Date(task.created_at).getTime()) / 1000)}s
+                        </p>
                       )}
                     </div>
 
@@ -258,7 +209,7 @@ export default function TasksPage() {
       <Modal
         isOpen={!!selectedTask}
         onClose={() => setSelectedTask(null)}
-        title={selectedTask?.title}
+        title={selectedTask?.action || 'Task Details'}
         description={`Task ID: ${selectedTask?.id}`}
         size="lg"
       >
@@ -268,13 +219,13 @@ export default function TasksPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Status</p>
-                <Badge variant={statusConfig[selectedTask.status as keyof typeof statusConfig].variant} dot>
+                <Badge variant={statusConfig[selectedTask.status as keyof typeof statusConfig]?.variant || 'default'} dot>
                   {selectedTask.status}
                 </Badge>
               </div>
               <div>
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Agent</p>
-                <p className="text-sm text-white">{selectedTask.agent}</p>
+                <p className="text-sm text-white">{selectedTask.agent || 'N/A'}</p>
               </div>
             </div>
 
@@ -282,7 +233,7 @@ export default function TasksPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Created</p>
-                <p className="text-sm text-white">{new Date(selectedTask.created_at).toLocaleString()}</p>
+                <p className="text-sm text-white">{selectedTask.created_at ? new Date(selectedTask.created_at).toLocaleString() : 'N/A'}</p>
               </div>
               {selectedTask.completed_at && (
                 <div>

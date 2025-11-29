@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import useSWR from 'swr';
 import {
   Activity,
   Bot,
@@ -20,66 +21,15 @@ import { Card, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
-
-// Stats data
-const stats = [
-  {
-    label: 'Active Tasks',
-    value: '24',
-    change: '+12%',
-    trend: 'up' as const,
-    icon: Activity,
-    color: 'primary',
-  },
-  {
-    label: 'Agents Online',
-    value: '10',
-    change: '100%',
-    trend: 'up' as const,
-    icon: Bot,
-    color: 'emerald',
-  },
-  {
-    label: 'Success Rate',
-    value: '98.5%',
-    change: '+2.3%',
-    trend: 'up' as const,
-    icon: CheckCircle,
-    color: 'blue',
-  },
-  {
-    label: 'Avg Response',
-    value: '1.2s',
-    change: '-0.3s',
-    trend: 'down' as const,
-    icon: Clock,
-    color: 'amber',
-  },
-];
-
-// Recent tasks data
-const recentTasks = [
-  { id: '1', title: 'Security vulnerability scan', agent: 'Security Agent', status: 'completed', time: '2 min ago' },
-  { id: '2', title: 'Generate UI components from Figma', agent: 'Design Agent', status: 'running', time: '5 min ago' },
-  { id: '3', title: 'Run test suite', agent: 'Testing Agent', status: 'pending', time: '10 min ago' },
-  { id: '4', title: 'Deploy to staging', agent: 'Deploy Agent', status: 'completed', time: '15 min ago' },
-  { id: '5', title: 'Code review PR #142', agent: 'Code Review Agent', status: 'completed', time: '20 min ago' },
-];
-
-// Agents data
-const agents = [
-  { name: 'Root Agent', status: 'online', tasks: 3, icon: Bot },
-  { name: 'Security Agent', status: 'busy', tasks: 2, icon: Shield },
-  { name: 'Design Agent', status: 'online', tasks: 0, icon: Palette },
-  { name: 'Database Agent', status: 'online', tasks: 1, icon: Database },
-];
+import api, { type Agent, type Task, type SystemHealth } from '@/lib/api';
+import { useStore } from '@/store';
 
 // Quick actions
 const quickActions = [
-  { label: 'Run Security Scan', icon: Shield, color: 'from-red-500 to-rose-600' },
-  { label: 'Sync Design Tokens', icon: Palette, color: 'from-violet-500 to-purple-600' },
-  { label: 'Deploy to Staging', icon: GitBranch, color: 'from-emerald-500 to-green-600' },
-  { label: 'Generate Tests', icon: Zap, color: 'from-amber-500 to-orange-600' },
+  { label: 'Run Security Scan', icon: Shield, color: 'from-red-500 to-rose-600', action: 'scan_vulnerabilities', agent: 'security_agent' },
+  { label: 'Sync Design Tokens', icon: Palette, color: 'from-violet-500 to-purple-600', action: 'sync_design_tokens', agent: 'design_agent' },
+  { label: 'Deploy to Staging', icon: GitBranch, color: 'from-emerald-500 to-green-600', action: 'deploy', agent: 'deployment_agent' },
+  { label: 'Generate Tests', icon: Zap, color: 'from-amber-500 to-orange-600', action: 'generate_tests', agent: 'testing_agent' },
 ];
 
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
@@ -102,12 +52,104 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
+  const { tasks, agents: storeAgents, setTasks, setAgents } = useStore();
+
+  // Fetch health/status
+  const { data: healthData } = useSWR('/health', () => api.getHealth());
+  const health = healthData?.data;
+
+  // Fetch agents
+  const { data: agentsData, mutate: mutateAgents } = useSWR('/api/v1/agents', () => api.getAgents(), {
+    refreshInterval: 5000,
+  });
+
+  // Fetch recent tasks
+  const { data: tasksData, mutate: mutateTasks } = useSWR('/api/v1/tasks', () => api.getTasks(10), {
+    refreshInterval: 3000,
+  });
+
+  const handleQuickAction = async (action: typeof quickActions[0]) => {
+    try {
+      await api.execute(action.action, {});
+      mutateTasks();
+    } catch (error) {
+      console.error('Failed to execute action:', error);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (agentsData?.data) {
+      setAgents(agentsData.data);
+    }
+  }, [agentsData, setAgents]);
+
+  useEffect(() => {
+    if (tasksData?.data) {
+      setTasks(tasksData.data);
+    }
+  }, [tasksData, setTasks]);
+
   if (!mounted) return null;
+
+  // Calculate stats from real data
+  const activeTasks = tasks.filter(t => t.status === 'running' || t.status === 'pending').length;
+  const completedTasks = tasks.filter(t => t.status === 'completed').length;
+  const totalTasks = tasks.length;
+  const successRate = totalTasks > 0 ? ((completedTasks / totalTasks) * 100).toFixed(1) : '0';
+  
+  const onlineAgents = storeAgents.filter(a => a.status === 'online').length;
+  const totalAgents = storeAgents.length;
+
+  const recentTasks = tasks.slice(0, 5);
+  const topAgents = storeAgents.slice(0, 4);
+
+  const stats = [
+    {
+      label: 'Active Tasks',
+      value: String(activeTasks),
+      change: '+12%',
+      trend: 'up' as const,
+      icon: Activity,
+      color: 'primary',
+    },
+    {
+      label: 'Agents Online',
+      value: `${onlineAgents}/${totalAgents}`,
+      change: totalAgents > 0 ? `${Math.round((onlineAgents / totalAgents) * 100)}%` : '0%',
+      trend: 'up' as const,
+      icon: Bot,
+      color: 'emerald',
+    },
+    {
+      label: 'Success Rate',
+      value: `${successRate}%`,
+      change: '+2.3%',
+      trend: 'up' as const,
+      icon: CheckCircle,
+      color: 'blue',
+    },
+    {
+      label: 'Avg Response',
+      value: health?.uptime ? `${(health.uptime / 1000).toFixed(1)}s` : 'N/A',
+      change: '-0.3s',
+      trend: 'down' as const,
+      icon: Clock,
+      color: 'amber',
+    },
+  ];
+
+  const agentIcons: Record<string, typeof Bot> = {
+    'root_agent': Bot,
+    'security_agent': Shield,
+    'design_agent': Palette,
+    'database_agent': Database,
+    'testing_agent': Zap,
+    'deployment_agent': GitBranch,
+  };
 
   return (
     <>
@@ -173,23 +215,29 @@ export default function DashboardPage() {
                 <CardDescription>Latest activity across all agents</CardDescription>
               </div>
               <div className="divide-y divide-slate-700/50">
-                {recentTasks.map((task, i) => (
-                  <motion.div
-                    key={task.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.5 + i * 0.05 }}
-                    className="px-6 py-4 hover:bg-slate-800/50 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">{task.title}</p>
-                        <p className="text-xs text-slate-400 mt-1">{task.agent} • {task.time}</p>
+                {recentTasks.length > 0 ? (
+                  recentTasks.map((task, i) => (
+                    <motion.div
+                      key={task.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.5 + i * 0.05 }}
+                      className="px-6 py-4 hover:bg-slate-800/50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{task.action || 'Task'}</p>
+                          <p className="text-xs text-slate-400 mt-1">{task.agent} • {task.created_at ? new Date(task.created_at).toLocaleString() : 'N/A'}</p>
+                        </div>
+                        <StatusBadge status={task.status} />
                       </div>
-                      <StatusBadge status={task.status} />
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="px-6 py-8 text-center text-slate-400">
+                    No recent tasks
+                  </div>
+                )}
               </div>
               <div className="p-4 border-t border-slate-700/50">
                 <Button variant="ghost" className="w-full">
@@ -211,31 +259,40 @@ export default function DashboardPage() {
                 <CardDescription>Real-time availability</CardDescription>
               </div>
               <div className="divide-y divide-slate-700/50">
-                {agents.map((agent, i) => (
-                  <motion.div
-                    key={agent.name}
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.6 + i * 0.05 }}
-                    className="px-6 py-4 hover:bg-slate-800/50 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          'w-2 h-2 rounded-full',
-                          agent.status === 'online' && 'bg-emerald-400',
-                          agent.status === 'busy' && 'bg-amber-400 animate-pulse',
-                          agent.status === 'offline' && 'bg-slate-500',
-                        )} />
-                        <div>
-                          <p className="text-sm font-medium text-white">{agent.name}</p>
-                          <p className="text-xs text-slate-400">{agent.tasks} tasks</p>
+                {topAgents.length > 0 ? (
+                  topAgents.map((agent, i) => {
+                    const Icon = agentIcons[agent.name] || Bot;
+                    return (
+                      <motion.div
+                        key={agent.name}
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.6 + i * 0.05 }}
+                        className="px-6 py-4 hover:bg-slate-800/50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={cn(
+                              'w-2 h-2 rounded-full',
+                              agent.status === 'online' && 'bg-emerald-400',
+                              agent.status === 'busy' && 'bg-amber-400 animate-pulse',
+                              agent.status === 'offline' && 'bg-slate-500',
+                            )} />
+                            <div>
+                              <p className="text-sm font-medium text-white">{agent.name}</p>
+                              <p className="text-xs text-slate-400">{agent.active_tasks || 0} tasks</p>
+                            </div>
+                          </div>
+                          <StatusBadge status={agent.status} />
                         </div>
-                      </div>
-                      <StatusBadge status={agent.status} />
-                    </div>
-                  </motion.div>
-                ))}
+                      </motion.div>
+                    );
+                  })
+                ) : (
+                  <div className="px-6 py-8 text-center text-slate-400">
+                    No agents available
+                  </div>
+                )}
               </div>
               <div className="p-4 border-t border-slate-700/50">
                 <Button variant="ghost" className="w-full">
@@ -265,8 +322,8 @@ export default function DashboardPage() {
                   variant="glass"
                   hover
                   padding="md"
-                  onClick={() => console.log(`Execute: ${action.label}`)}
-                  className="text-center"
+                  onClick={() => handleQuickAction(action)}
+                  className="text-center cursor-pointer"
                 >
                   <div className={cn(
                     'w-12 h-12 mx-auto mb-3 rounded-xl flex items-center justify-center',

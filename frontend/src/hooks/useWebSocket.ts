@@ -31,7 +31,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
 
-  const { setConnected, updateTask, setAgents } = useStore();
+  const { setConnected, updateTask, setAgents, agents } = useStore();
 
   const connect = useCallback(() => {
     if (ws.current?.readyState === WebSocket.OPEN) return;
@@ -85,18 +85,27 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         break;
 
       case 'agent_status':
-        // Handle agent status updates
+        // Handle agent status updates - update the agent in the store
+        const { agent: agentName, status: agentStatus, ...agentUpdates } = message.payload as { agent: string; status: string; [key: string]: unknown };
+        const updatedAgents = agents.map((a) =>
+          a.name === agentName
+            ? { ...a, status: agentStatus as 'online' | 'busy' | 'offline', ...agentUpdates }
+            : a
+        );
+        setAgents(updatedAgents);
         break;
 
       case 'system_event':
         // Handle system events
+        console.log('System event:', message.payload);
         break;
 
       case 'notification':
         // Handle notifications (could show toast)
+        console.log('Notification:', message.payload);
         break;
     }
-  }, [updateTask]);
+  }, [updateTask, setAgents, agents]);
 
   const send = useCallback((message: Record<string, unknown>) => {
     if (ws.current?.readyState === WebSocket.OPEN) {
