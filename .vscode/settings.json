@@ -1,0 +1,17 @@
+{
+  "liveServer.settings.port": 3000,
+  "liveServer.settings.root": "/frontend",
+  "liveServer.settings.CustomBrowser": "chrome",
+  "liveServer.settings.donotShowInfoMsg": true,
+  "liveServer.settings.donotVerifyTags": true,
+  "liveServer.settings.ignoreFiles": [
+    ".vscode/**",
+    "**/*.scss",
+    "**/*.sass"
+  ],
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true
+  }
+}

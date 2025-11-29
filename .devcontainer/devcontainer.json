@@ -1,0 +1,56 @@
+{
+  "name": "DevOps Brain",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "18"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "forwardPorts": [3000, 8000, 5432, 6379, 9090],
+  "portsAttributes": {
+    "3000": {
+      "label": "Frontend (Next.js)",
+      "onAutoForward": "openBrowser",
+      "protocol": "http"
+    },
+    "8000": {
+      "label": "Backend API (FastAPI)",
+      "onAutoForward": "notify",
+      "protocol": "http"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "protocol": "tcp"
+    },
+    "6379": {
+      "label": "Redis",
+      "protocol": "tcp"
+    },
+    "9090": {
+      "label": "Prometheus",
+      "onAutoForward": "openBrowser",
+      "protocol": "http"
+    }
+  },
+  "postCreateCommand": "pip install -r requirements.txt && cd frontend && npm install",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ritwickdey.liveserver",
+        "bradlc.vscode-tailwindcss",
+        "esbenp.preview-server"
+      ],
+      "settings": {
+        "liveServer.settings.port": 3000,
+        "liveServer.settings.root": "/workspace/frontend",
+        "liveServer.settings.CustomBrowser": "chrome",
+        "liveServer.settings.donotShowInfoMsg": true,
+        "liveServer.settings.donotVerifyTags": true
+      }
+    }
+  },
+  "remoteUser": "vscode"
+}
