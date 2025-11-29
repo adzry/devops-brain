@@ -68,3 +68,12 @@ ruff>=0.1.6
 # Security scanning
 bandit>=1.7.0
 safety>=2.3.0
+
+# Vector databases (mgx.dev recommendation)
+qdrant-client>=1.7.0
+pinecone-client>=3.0.0
+
+# Infrastructure as Code (mgx.dev recommendation)
+cdktf>=0.20.0
+cdktf-cli>=0.20.0
+pulumi>=3.100.0
