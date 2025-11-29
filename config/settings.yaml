@@ -1,0 +1,68 @@
+# DevOps Brain - Global Settings
+# Environment-specific configuration
+
+application:
+  name: "DevOps Brain"
+  version: "1.0.0"
+  environment: "${ENVIRONMENT:development}"
+
+logging:
+  level: "${LOG_LEVEL:INFO}"
+  format: "json"
+  handlers:
+    - type: console
+      level: INFO
+    - type: file
+      path: "/var/log/devops-brain/app.log"
+      level: DEBUG
+      max_size: "100MB"
+      backup_count: 5
+
+agents:
+  config_path: "../agents/agent_config.yaml"
+  default_timeout: 300
+  max_concurrent: 5
+
+workflows:
+  config_dir: "../workflows"
+  execution:
+    max_parallel_stages: 3
+    retry_failed_stages: true
+    timeout_minutes: 60
+
+mcp:
+  config_path: "../mcp/mcp_config.yaml"
+  connection_pool_size: 10
+  request_timeout: 30
+
+security:
+  secrets_manager: "env"  # Options: env, vault, aws-secrets
+  encryption:
+    enabled: true
+    algorithm: "AES-256-GCM"
+  audit:
+    enabled: true
+    log_path: "/var/log/devops-brain/audit.log"
+
+features:
+  auto_retry: true
+  circuit_breaker: true
+  rate_limiting: true
+  caching:
+    enabled: true
+    ttl_seconds: 300
+    backend: "redis"
+
+notifications:
+  enabled: true
+  default_channels:
+    - slack
+  escalation:
+    enabled: true
+    levels:
+      - delay_minutes: 5
+        channels: ["slack"]
+      - delay_minutes: 15
+        channels: ["slack", "email"]
+      - delay_minutes: 30
+        channels: ["slack", "email", "pagerduty"]

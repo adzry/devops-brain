@@ -1,0 +1,65 @@
+# Pull Request Automation Workflow
+# Triggered on PR creation and updates
+
+name: pull_request_workflow
+description: "Automated workflow for handling pull requests"
+version: "1.0.0"
+
+triggers:
+  - event: pull_request.opened
+  - event: pull_request.synchronize
+  - event: pull_request.reopened
+
+stages:
+  - name: code_analysis
+    description: "Analyze code changes"
+    agent: code_review_agent
+    steps:
+      - action: fetch_pr_diff
+        output: pr_changes
+      
+      - action: analyze_code
+        input: pr_changes
+        config:
+          check_style: true
+          check_security: true
+          check_complexity: true
+        output: analysis_results
+      
+      - action: post_review_comments
+        input: analysis_results
+        condition: "analysis_results.issues.length > 0"
+
+  - name: automated_tests
+    description: "Run automated test suite"
+    parallel: true
+    steps:
+      - action: run_unit_tests
+        timeout: 300
+        
+      - action: run_integration_tests
+        timeout: 600
+        
+      - action: run_linting
+        timeout: 120
+
+  - name: summary
+    description: "Generate PR summary"
+    agent: root_agent
+    steps:
+      - action: generate_summary
+        inputs:
+          - analysis_results
+          - test_results
+        output: pr_summary
+      
+      - action: update_pr_description
+        input: pr_summary
+
+notifications:
+  on_success:
+    - channel: slack
+      message: "PR #{pr.number} passed all automated checks"
+  on_failure:
+    - channel: slack
+      message: "PR #{pr.number} failed automated checks: {failure_reason}"

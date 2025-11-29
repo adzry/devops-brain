@@ -1,0 +1,114 @@
+# Deployment Workflow
+# Triggered on releases and manual deployment requests
+
+name: deploy_workflow
+description: "Automated deployment pipeline for staging and production"
+version: "1.0.0"
+
+triggers:
+  - event: release.published
+  - event: workflow_dispatch
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      version:
+        description: "Version to deploy"
+        required: true
+
+environments:
+  staging:
+    url: "https://staging.example.com"
+    approval_required: false
+    variables:
+      LOG_LEVEL: "debug"
+      
+  production:
+    url: "https://example.com"
+    approval_required: true
+    approvers: ["admin", "lead-dev"]
+    variables:
+      LOG_LEVEL: "info"
+
+stages:
+  - name: validate
+    description: "Validate deployment prerequisites"
+    agent: deployment_agent
+    steps:
+      - action: check_version
+        input: "${inputs.version}"
+        
+      - action: validate_artifacts
+        required_artifacts:
+          - build_output
+          - test_reports
+          
+      - action: run_smoke_tests
+        environment: "${inputs.environment}"
+
+  - name: backup
+    description: "Backup current deployment"
+    condition: "${inputs.environment} == 'production'"
+    steps:
+      - action: create_backup
+        include:
+          - database
+          - configuration
+        retention: "30d"
+
+  - name: deploy
+    description: "Execute deployment"
+    needs: [validate, backup]
+    steps:
+      - action: deploy_application
+        environment: "${inputs.environment}"
+        strategy: rolling
+        config:
+          max_unavailable: 1
+          max_surge: 1
+          
+      - action: update_dns
+        condition: "${deployment.type} == 'blue-green'"
+        
+      - action: notify_monitoring
+        service: "datadog"
+        event: "deployment.started"
+
+  - name: verify
+    description: "Post-deployment verification"
+    needs: [deploy]
+    steps:
+      - action: health_check
+        endpoint: "/health"
+        timeout: 60
+        retries: 5
+        
+      - action: run_smoke_tests
+        suite: "critical"
+        
+      - action: validate_metrics
+        thresholds:
+          error_rate: "< 0.1%"
+          latency_p99: "< 500ms"
+
+rollback:
+  automatic: true
+  conditions:
+    - "health_check.status != 'healthy'"
+    - "error_rate > 1%"
+  steps:
+    - action: revert_deployment
+    - action: notify_team
+      urgency: high
+
+notifications:
+  on_success:
+    - channel: slack
+      message: "Deployment to ${inputs.environment} completed successfully"
+  on_failure:
+    - channel: pagerduty
+      severity: critical

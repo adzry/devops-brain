@@ -1,0 +1,111 @@
+# MCP Adapters Configuration
+# Configure external service integrations
+
+version: "1.0.0"
+protocol: "mcp-2024"
+
+adapters:
+  github:
+    enabled: true
+    module: "adapters.github_adapter"
+    config:
+      api_version: "2022-11-28"
+      base_url: "https://api.github.com"
+      auth_type: "token"
+      token_env: "GITHUB_TOKEN"
+      rate_limit:
+        requests_per_hour: 5000
+        retry_on_limit: true
+    capabilities:
+      - repository.read
+      - repository.write
+      - pull_request.create
+      - pull_request.review
+      - issues.manage
+      - actions.trigger
+
+  slack:
+    enabled: true
+    module: "adapters.slack_adapter"
+    config:
+      api_url: "https://slack.com/api"
+      token_env: "SLACK_BOT_TOKEN"
+      signing_secret_env: "SLACK_SIGNING_SECRET"
+    capabilities:
+      - message.send
+      - message.update
+      - channel.list
+      - file.upload
+    channels:
+      default: "#devops-alerts"
+      deployments: "#deployments"
+      incidents: "#incidents"
+
+  database:
+    enabled: true
+    module: "adapters.database_adapter"
+    config:
+      driver: "postgresql"
+      connection_string_env: "DATABASE_URL"
+      pool_size: 10
+      timeout_seconds: 30
+    capabilities:
+      - query.read
+      - query.write
+      - schema.inspect
+      - backup.create
+    security:
+      readonly_mode: false
+      allowed_operations:
+        - SELECT
+        - INSERT
+        - UPDATE
+      blocked_tables:
+        - users_credentials
+        - api_keys
+
+  monitoring:
+    enabled: true
+    module: "adapters.monitoring_adapter"
+    config:
+      providers:
+        - name: datadog
+          api_key_env: "DATADOG_API_KEY"
+          app_key_env: "DATADOG_APP_KEY"
+          site: "datadoghq.com"
+        - name: prometheus
+          url: "http://prometheus:9090"
+    capabilities:
+      - metrics.query
+      - metrics.push
+      - alerts.create
+      - dashboards.manage
+
+  cloud:
+    enabled: true
+    module: "adapters.cloud_adapter"
+    config:
+      providers:
+        aws:
+          region: "us-east-1"
+          credentials_env: "AWS_CREDENTIALS"
+        gcp:
+          project_id_env: "GCP_PROJECT_ID"
+          credentials_file: "/secrets/gcp-credentials.json"
+    capabilities:
+      - compute.manage
+      - storage.access
+      - networking.configure
+      - iam.read
+
+# Global settings
+settings:
+  timeout_default: 30
+  retry_attempts: 3
+  retry_backoff: "exponential"
+  logging:
+    level: "info"
+    format: "json"
+  security:
+    encrypt_at_rest: true
+    audit_logging: true
