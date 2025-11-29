@@ -18,6 +18,31 @@ from .message_queue import MessageQueue, Message, MessagePriority
 
 logger = logging.getLogger(__name__)
 
+# Lazy import to avoid circular dependencies
+_websocket_broadcast = None
+
+
+def _get_websocket_broadcast():
+    """Lazy import of WebSocket broadcast functions."""
+    global _websocket_broadcast
+    if _websocket_broadcast is None:
+        try:
+            from src.api.websocket import (
+                broadcast_task_update,
+                broadcast_agent_status,
+            )
+            _websocket_broadcast = {
+                "task_update": broadcast_task_update,
+                "agent_status": broadcast_agent_status,
+            }
+        except ImportError:
+            # WebSocket module not available (e.g., during testing)
+            _websocket_broadcast = {
+                "task_update": lambda *args, **kwargs: None,
+                "agent_status": lambda *args, **kwargs: None,
+            }
+    return _websocket_broadcast
+
 
 class TaskStatus(Enum):
     """Task execution status."""
@@ -53,6 +78,7 @@ class TaskResult:
     action: str
     result: Any = None
     error: Optional[str] = None
+    created_at: Optional[datetime] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     duration_ms: int = 0
@@ -168,6 +194,17 @@ class Orchestrator:
     ) -> None:
         """Register an agent with the orchestrator."""
         self.registry.register(name, agent, capabilities)
+        
+        # Broadcast agent status
+        try:
+            ws_broadcast = _get_websocket_broadcast()
+            asyncio.create_task(ws_broadcast["agent_status"](
+                agent_name=name,
+                status="online",
+                capabilities=capabilities,
+            ))
+        except Exception as e:
+            logger.warning(f"Failed to broadcast agent status: {e}")
     
     def unregister_agent(self, name: str) -> None:
         """Unregister an agent."""
@@ -193,6 +230,7 @@ class Orchestrator:
             status=TaskStatus.QUEUED,
             agent=request.target_agent or "unknown",
             action=request.action,
+            created_at=request.created_at,
         )
         
         # Queue the task
@@ -204,6 +242,18 @@ class Orchestrator:
             priority=request.priority,
         )
         await self.message_queue.enqueue(message)
+        
+        # Broadcast task update
+        try:
+            ws_broadcast = _get_websocket_broadcast()
+            await ws_broadcast["task_update"](
+                task_id=request.id,
+                status="queued",
+                agent=request.target_agent or "unknown",
+                action=request.action,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to broadcast task update: {e}")
         
         logger.info(
             f"Task {request.id} queued for {request.target_agent}: {request.action}"
@@ -313,6 +363,18 @@ class Orchestrator:
                 self._tasks[task_id].status = TaskStatus.RUNNING
                 self._tasks[task_id].started_at = datetime.utcnow()
         
+        # Broadcast task started
+        try:
+            ws_broadcast = _get_websocket_broadcast()
+            await ws_broadcast["task_update"](
+                task_id=task_id,
+                status="running",
+                agent=request.target_agent or "unknown",
+                action=request.action,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to broadcast task update: {e}")
+        
         try:
             # Get the target agent
             agent = self.registry.get(request.target_agent)
@@ -333,22 +395,49 @@ class Orchestrator:
             )
             
             # Update task result
+            final_status = TaskStatus.COMPLETED if response.success else TaskStatus.FAILED
             async with self._lock:
                 result = self._tasks[task_id]
-                result.status = (
-                    TaskStatus.COMPLETED if response.success else TaskStatus.FAILED
-                )
+                result.status = final_status
                 result.result = response.result
                 result.error = response.error
                 result.completed_at = datetime.utcnow()
                 result.duration_ms = response.duration_ms
                 result.metadata = response.metadata
+            
+            # Broadcast task completion
+            try:
+                ws_broadcast = _get_websocket_broadcast()
+                await ws_broadcast["task_update"](
+                    task_id=task_id,
+                    status=final_status.value,
+                    agent=request.target_agent or "unknown",
+                    action=request.action,
+                    result=response.result,
+                    error=response.error,
+                    duration_ms=response.duration_ms,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to broadcast task update: {e}")
                 
         except asyncio.TimeoutError:
             async with self._lock:
                 self._tasks[task_id].status = TaskStatus.FAILED
                 self._tasks[task_id].error = "Task execution timed out"
                 self._tasks[task_id].completed_at = datetime.utcnow()
+            
+            # Broadcast task failure
+            try:
+                ws_broadcast = _get_websocket_broadcast()
+                await ws_broadcast["task_update"](
+                    task_id=task_id,
+                    status="failed",
+                    agent=request.target_agent or "unknown",
+                    action=request.action,
+                    error="Task execution timed out",
+                )
+            except Exception as e:
+                logger.warning(f"Failed to broadcast task update: {e}")
                 
         except Exception as e:
             logger.error(f"Task {task_id} failed: {e}")
@@ -356,6 +445,19 @@ class Orchestrator:
                 self._tasks[task_id].status = TaskStatus.FAILED
                 self._tasks[task_id].error = str(e)
                 self._tasks[task_id].completed_at = datetime.utcnow()
+            
+            # Broadcast task failure
+            try:
+                ws_broadcast = _get_websocket_broadcast()
+                await ws_broadcast["task_update"](
+                    task_id=task_id,
+                    status="failed",
+                    agent=request.target_agent or "unknown",
+                    action=request.action,
+                    error=str(e),
+                )
+            except Exception as e:
+                logger.warning(f"Failed to broadcast task update: {e}")
         
         finally:
             async with self._lock:
