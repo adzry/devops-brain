@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "devops-brain"
+version = "0.1.0"
+description = "Multi-agent DevOps Brain automation framework"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "typer>=0.9",
+    "pydantic>=2.8",
+    "pyyaml>=6.0",
+    "rich>=13.7",
+]
+authors = [
+    { name = "DevOps Brain Maintainers", email = "maintainers@example.com" }
+]
+license = { text = "MIT" }
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6", "mypy>=1.11"]
+
+[project.scripts]
+devops-brain = "devops_brain.cli:app"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

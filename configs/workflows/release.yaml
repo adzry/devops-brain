@@ -1,0 +1,32 @@
+name: release
+description: "Plan, build, deploy, and verify a release cut."
+triggers:
+  - github.tag.created
+  - manual
+steps:
+  - name: Build release plan
+    agent: planner
+    action: plan
+    inputs:
+      objective: "Ship signed artifacts"
+  - name: Trigger CI pipeline
+    agent: executor
+    action: trigger-ci
+    adapter: github
+    inputs:
+      workflow: release.yml
+      inputs:
+        release_type: full
+  - name: Deploy to production
+    agent: executor
+    action: deploy
+    adapter: kubernetes
+    inputs:
+      namespace: production
+      manifest: k8s/deployment.yaml
+  - name: Verify rollout
+    agent: observer
+    action: verify
+    adapter: ci
+    inputs:
+      pipeline: release

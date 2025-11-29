@@ -1,0 +1,46 @@
+version: "1.0"
+metadata:
+  environment: local
+  owner: platform-team@example.com
+  mission: "Bootstrap DevOps Brain automation locally"
+agents:
+  - name: planner
+    role: planner
+    model: gpt-4o
+    description: "Root planner responsible for high-level strategies"
+    skills:
+      - release planning
+      - incident triage
+  - name: executor
+    role: executor
+    model: claude-3-sonnet
+    description: "Executes workflows through adapters"
+    skills:
+      - kubernetes
+      - github-actions
+  - name: observer
+    role: observer
+    model: gpt-4o-mini
+    description: "Validates outcomes and reports back"
+    skills:
+      - telemetry
+      - reporting
+workflows:
+  - name: release
+    path: workflows/release.yaml
+  - name: incident
+    path: workflows/incident.yaml
+mcp_adapters:
+  - name: github
+    type: github
+    settings:
+      repo: org/repo
+      workflow: release.yml
+  - name: kubernetes
+    type: kubernetes
+    settings:
+      namespace: production
+  - name: ci
+    type: ci
+    settings:
+      pipeline: release
