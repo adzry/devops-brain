@@ -200,5 +200,39 @@ class ApiClient {
   }
 }
 
+  // Workflow operations
+  async getWorkflows(): Promise<ApiResponse<any[]>> {
+    return this.request('/api/v1/workflows', { method: 'GET' });
+  }
+
+  async getWorkflow(id: string): Promise<ApiResponse<any>> {
+    return this.request(`/api/v1/workflows/${id}`, { method: 'GET' });
+  }
+
+  async createWorkflow(workflow: any): Promise<ApiResponse<any>> {
+    return this.request('/api/v1/workflows', {
+      method: 'POST',
+      body: JSON.stringify(workflow),
+    });
+  }
+
+  async updateWorkflow(id: string, workflow: any): Promise<ApiResponse<any>> {
+    return this.request(`/api/v1/workflows/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(workflow),
+    });
+  }
+
+  async deleteWorkflow(id: string): Promise<ApiResponse<void>> {
+    return this.request(`/api/v1/workflows/${id}`, { method: 'DELETE' });
+  }
+
+  async executeWorkflow(id: string, input?: any): Promise<ApiResponse<any>> {
+    return this.request(`/api/v1/workflows/${id}/execute`, {
+      method: 'POST',
+      body: JSON.stringify(input || {}),
+    });
+  }
+
 export const api = new ApiClient();
 export default api;
