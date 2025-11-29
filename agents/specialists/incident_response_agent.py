@@ -11,6 +11,8 @@ from enum import Enum
 from typing import Any
 
 from .base_agent import BaseAgent
+from src.core.memory.vector_db import VectorDB
+from src.core.tools.executor import ToolExecutor, get_tool_executor
 
 
 class IncidentSeverity(Enum):
@@ -60,7 +62,13 @@ class IncidentResponseAgent(BaseAgent):
     - Runbook execution
     - Communication management
     - Post-mortem generation
+    - Learning from past incidents (mgx.dev recommendation)
     """
+    
+    def __init__(self, config=None):
+        super().__init__(config)
+        self._vector_db = VectorDB(collection_name="incident_resolutions")
+        self._tool_executor = get_tool_executor()
     
     SYSTEM_PROMPT = """You are the Incident Response Agent for DevOps Brain. Your mission is to 
 minimize the impact of production incidents through rapid response and resolution.
@@ -97,7 +105,45 @@ When in doubt, escalate. A false alarm is better than a missed incident."""
         return self.SYSTEM_PROMPT
     
     async def _triage_incident(self, payload: dict[str, Any]) -> dict:
-        """Triage and classify an incident."""
+        """Triage and classify an incident with learning from past incidents."""
+        description = payload.get("description", "")
+        
+        # Search for similar past incidents (mgx.dev recommendation)
+        # Initialize vector DB if needed
+        try:
+            if not self._vector_db._initialized:
+                await self._vector_db.initialize()
+            
+            # Get embedding - use OpenAI or fallback
+            try:
+                from openai import AsyncOpenAI
+                import os
+                client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+                response = await client.embeddings.create(
+                    model="text-embedding-3-small",
+                    input=description,
+                )
+                embedding = response.data[0].embedding
+            except Exception:
+                # Fallback: use simple hash (would be replaced with real embedding)
+                import hashlib
+                embedding = [float(int(x, 16)) / 15.0 for x in hashlib.md5(description.encode()).hexdigest()[:16]]
+            
+            similar_incidents = await self._vector_db.search_similar_incidents(
+                query_embedding=embedding,
+                limit=3,
+            )
+        except Exception as e:
+            self.logger.warning(f"Failed to search similar incidents: {e}")
+            similar_incidents = []
+        
+        context = ""
+        if similar_incidents:
+            context = "\n\nSimilar past incidents and resolutions:\n"
+            for incident in similar_incidents:
+                context += f"- {incident['description']}\n  Resolution: {incident['resolution']}\n"
+        
+        # Continue with triage...
         alert = payload.get("alert", {})
         symptoms = payload.get("symptoms", [])
         
@@ -441,10 +487,51 @@ When in doubt, escalate. A false alarm is better than a missed incident."""
         }
     
     async def _generate_postmortem(self, payload: dict[str, Any]) -> dict:
-        """Generate a post-mortem document."""
+        """Generate a post-mortem document and store resolution for learning."""
         incident_id = payload.get("incident_id")
         
         self.logger.info(f"Generating post-mortem for {incident_id}")
+        
+        # Get incident details
+        description = payload.get("description", "")
+        resolution = payload.get("resolution", "")
+        
+        # Store resolution for learning (mgx.dev recommendation)
+        if description and resolution:
+            try:
+                if not self._vector_db._initialized:
+                    await self._vector_db.initialize()
+                
+                # Get embedding - use OpenAI or fallback
+                try:
+                    from openai import AsyncOpenAI
+                    import os
+                    client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+                    response = await client.embeddings.create(
+                        model="text-embedding-3-small",
+                        input=f"{description}\n{resolution}",
+                    )
+                    embedding = response.data[0].embedding
+                except Exception:
+                    # Fallback: use simple hash (would be replaced with real embedding)
+                    import hashlib
+                    embedding = [float(int(x, 16)) / 15.0 for x in hashlib.md5(
+                        f"{description}\n{resolution}".encode()
+                    ).hexdigest()[:16]]
+                
+                await self._vector_db.store_incident_resolution(
+                    incident_id=incident_id or "unknown",
+                    description=description,
+                    resolution=resolution,
+                    embedding=embedding,
+                    metadata={
+                        "agent": "incident_response_agent",
+                        "severity": payload.get("severity", "unknown"),
+                    },
+                )
+                self.logger.info(f"Stored incident resolution for learning: {incident_id}")
+            except Exception as e:
+                self.logger.warning(f"Failed to store incident resolution: {e}")
         
         postmortem = {
             "incident_id": incident_id or "INC-2024-1129-001",

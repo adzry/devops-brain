@@ -70,7 +70,7 @@ async def lifespan(app: FastAPI):
 
 
 async def _register_agents(orch: Orchestrator) -> None:
-    """Register all specialist agents."""
+    """Register all specialist agents with the orchestrator."""
     from agents.specialists import (
         AgentConfig,
         SecurityAgent,
@@ -81,6 +81,8 @@ async def _register_agents(orch: Orchestrator) -> None:
         DatabaseAgent,
         InfrastructureAgent,
     )
+    from agents.specialists.cicd_generator_agent import CICDGeneratorAgent
+    from agents.specialists.meta_agent import MetaAgent
     
     agents = [
         ("security_agent", SecurityAgent, [
@@ -103,6 +105,12 @@ async def _register_agents(orch: Orchestrator) -> None:
         ]),
         ("infrastructure_agent", InfrastructureAgent, [
             "terraform_management", "kubernetes_orchestration", "cost_optimization",
+        ]),
+        ("cicd_generator_agent", CICDGeneratorAgent, [
+            "ci_generation", "workflow_optimization", "pipeline_management",
+        ]),
+        ("meta_agent", MetaAgent, [
+            "agent_analysis", "prompt_optimization", "ab_testing", "self_evolution",
         ]),
     ]
     
