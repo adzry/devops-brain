@@ -299,6 +299,26 @@ Pre-built components using the design system:
 | `Alert` | Info, success, warning, error messages |
 | `Spinner` | Loading indicators |
 
+## Frontend
+
+A modern Next.js dashboard is included in the `frontend/` directory:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Features
+- 🎨 Beautiful dark-mode UI with design system
+- ⚡ Real-time WebSocket updates
+- 📊 Live dashboard with stats
+- 🤖 Agent management
+- 📋 Task execution & tracking
+- 🎨 Design system showcase
+
+See [frontend/README.md](frontend/README.md) for full documentation.
+
 ## License
 
 MIT License - See LICENSE file for details.

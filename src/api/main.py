@@ -8,12 +8,13 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from src.core import Orchestrator, TaskRequest, MessagePriority
+from src.api.websocket import websocket_endpoint, manager as ws_manager
 
 # Configure logging
 logging.basicConfig(
@@ -122,10 +123,17 @@ def create_app() -> FastAPI:
     )
     
     # Include routers
-    from .routes import agents, tasks, health
+    from .routes import agents, tasks, health, design
     app.include_router(health.router, tags=["Health"])
     app.include_router(agents.router, prefix="/api/v1/agents", tags=["Agents"])
     app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["Tasks"])
+    app.include_router(design.router, prefix="/api/v1", tags=["Design"])
+    
+    # WebSocket endpoint
+    @app.websocket("/ws")
+    async def websocket_route(websocket: WebSocket):
+        """WebSocket endpoint for real-time updates."""
+        await websocket_endpoint(websocket)
     
     return app
 
