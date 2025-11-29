@@ -9,6 +9,8 @@ from enum import Enum
 from typing import Any
 
 from .base_agent import BaseAgent
+from src.core.tools.executor import ToolExecutor, get_tool_executor
+from src.core.iac.generator import IaCGenerator
 
 
 class CloudProvider(Enum):
@@ -37,7 +39,13 @@ class InfrastructureAgent(BaseAgent):
     - Cost optimization
     - Disaster recovery planning
     - Network configuration
+    - Dynamic IaC generation (mgx.dev recommendation)
     """
+    
+    def __init__(self, config=None):
+        super().__init__(config)
+        self._tool_executor = get_tool_executor()
+        self._iac_generator = IaCGenerator(provider="cdktf")
     
     SYSTEM_PROMPT = """You are the Infrastructure Agent for DevOps Brain. Your mission is to 
 manage and optimize cloud infrastructure with reliability and efficiency.
@@ -71,7 +79,21 @@ A well-architected infrastructure enables the business to move fast safely."""
         return self.SYSTEM_PROMPT
     
     async def _generate_terraform(self, payload: dict[str, Any]) -> dict:
-        """Generate Terraform configuration."""
+        """Generate Terraform configuration dynamically (mgx.dev recommendation)."""
+        # Check if we have high-level intent
+        intent = payload.get("intent")
+        if intent:
+            # Use dynamic IaC generator
+            result = await self._iac_generator.generate_from_intent(
+                intent=intent,
+                cloud_provider=payload.get("provider", "aws"),
+            )
+            return {
+                "data": result,
+                "metadata": {"generated_dynamically": True},
+            }
+        
+        # Fallback to static generation
         resource_type = payload.get("resource_type", "compute")
         provider = payload.get("provider", "aws")
         requirements = payload.get("requirements", {})
@@ -349,7 +371,26 @@ output "cluster_name" {
         }
     
     async def _kubernetes_deploy(self, payload: dict[str, Any]) -> dict:
-        """Generate Kubernetes deployment configuration."""
+        """Deploy to Kubernetes using real kubectl (mgx.dev recommendation)."""
+        namespace = payload.get("namespace", "default")
+        manifest_path = payload.get("manifest_path")
+        
+        # Use tool executor to run real kubectl
+        if manifest_path:
+            result = await self._tool_executor.kubectl(
+                args=["apply", "-f", manifest_path],
+                namespace=namespace,
+            )
+            return {
+                "data": {
+                    "success": result.success,
+                    "output": result.stdout,
+                    "error": result.stderr,
+                },
+                "metadata": {"executed_via_kubectl": True},
+            }
+        
+        # Fallback to generating configuration
         app_name = payload.get("app", "my-app")
         image = payload.get("image", "app:latest")
         replicas = payload.get("replicas", 3)

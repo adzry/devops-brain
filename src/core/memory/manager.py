@@ -6,11 +6,14 @@ Unified interface for managing different memory types.
 
 import asyncio
 import logging
+import os
 from typing import Any, Optional
 
 from .base import MemoryConfig, MemoryEntry, MemoryType
 from .conversation import ConversationMemory
 from .vector import VectorMemory
+from .persistence import MemoryPersistence
+from .vector_db import VectorDB
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +32,7 @@ class MemoryManager:
         self,
         config: Optional[MemoryConfig] = None,
         agent_id: Optional[str] = None,
+        db_connection=None,
     ):
         self.config = config or MemoryConfig()
         self.agent_id = agent_id
@@ -40,11 +44,70 @@ class MemoryManager:
         # Working memory (short-term, current task)
         self._working_memory: dict[str, Any] = {}
         self._lock = asyncio.Lock()
+        
+        # Persistence
+        self._persistence = MemoryPersistence(db_connection)
+        
+        # Vector DB for incident learning (mgx.dev recommendation)
+        self._vector_db = VectorDB(
+            provider=os.environ.get("VECTOR_DB_PROVIDER", "qdrant"),
+            collection_name=f"devops_brain_{agent_id or 'global'}",
+        )
     
     async def initialize(self) -> None:
         """Initialize all memory systems."""
         await self.semantic.initialize()
+        await self._persistence.start()
+        await self._vector_db.initialize()
+        
+        # Load persisted memories
+        if self.agent_id:
+            persisted = await self._persistence.load(agent_id=self.agent_id)
+            # TODO: Restore memories to stores
+        
         logger.info(f"Memory manager initialized for agent {self.agent_id}")
+    
+    async def shutdown(self) -> None:
+        """Shutdown memory manager and persist data."""
+        await self._persistence.stop()
+        logger.info(f"Memory manager shut down for agent {self.agent_id}")
+    
+    # ========================================================================
+    # Vector DB Operations (mgx.dev recommendation)
+    # ========================================================================
+    
+    async def store_incident_resolution(
+        self,
+        incident_id: str,
+        description: str,
+        resolution: str,
+        metadata: Optional[dict] = None,
+    ) -> str:
+        """Store incident resolution for learning (mgx.dev recommendation)."""
+        # Get embedding from semantic memory
+        embedding = await self.semantic._get_embedding(f"{description}\n{resolution}")
+        
+        return await self._vector_db.store_incident_resolution(
+            incident_id=incident_id,
+            description=description,
+            resolution=resolution,
+            embedding=embedding,
+            metadata=metadata or {},
+        )
+    
+    async def search_similar_incidents(
+        self,
+        description: str,
+        limit: int = 5,
+    ) -> list[dict]:
+        """Search for similar past incidents (mgx.dev recommendation)."""
+        # Get embedding for query
+        embedding = await self.semantic._get_embedding(description)
+        
+        return await self._vector_db.search_similar_incidents(
+            query_embedding=embedding,
+            limit=limit,
+        )
     
     # ========================================================================
     # Conversation Memory
@@ -107,7 +170,12 @@ class MemoryManager:
             metadata=metadata,
             agent_id=self.agent_id,
         )
-        return await self.semantic.add(entry)
+        memory_id = await self.semantic.add(entry)
+        
+        # Persist to database
+        await self._persistence.save(entry)
+        
+        return memory_id
     
     async def recall(
         self,
@@ -249,6 +317,9 @@ class MemoryManager:
         """Cleanup and consolidate memories."""
         results = {
             "semantic_consolidated": await self.semantic.consolidate(),
+            "persistence_consolidated": await self._persistence.consolidate(
+                agent_id=self.agent_id,
+            ),
         }
         return results
     

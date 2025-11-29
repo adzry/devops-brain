@@ -23,6 +23,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Agents', href: '/agents', icon: Bot },
   { name: 'Tasks', href: '/tasks', icon: ListTodo },
+  { name: 'Workflows', href: '/workflows', icon: Activity },
   { name: 'Design', href: '/design', icon: Palette },
 ];
 

@@ -1,0 +1,57 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Frontend Dev Server",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "dev"],
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": [],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
+    },
+    {
+      "label": "Start Backend API",
+      "type": "shell",
+      "command": "uvicorn",
+      "args": [
+        "src.api.main:app",
+        "--reload",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000"
+      ],
+      "problemMatcher": [],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Open Frontend in Browser",
+      "type": "shell",
+      "command": "open",
+      "args": ["http://localhost:3000"],
+      "windows": {
+        "command": "start",
+        "args": ["http://localhost:3000"]
+      },
+      "linux": {
+        "command": "xdg-open",
+        "args": ["http://localhost:3000"]
+      },
+      "problemMatcher": []
+    }
+  ]
+}

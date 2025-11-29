@@ -3,6 +3,13 @@ Agent Orchestrator
 
 Central coordination layer that routes tasks to appropriate specialist agents,
 manages agent lifecycle, and handles inter-agent communication.
+
+Enhanced with:
+- Circuit breakers for fault tolerance
+- Task deduplication
+- Load balancing
+- Distributed tracing
+- Enhanced metrics
 """
 
 import asyncio
@@ -15,8 +22,20 @@ from enum import Enum
 from typing import Any, Optional
 
 from .message_queue import MessageQueue, Message, MessagePriority
+from .observability.tracing import get_tracer
+from .observability.metrics import get_metrics
 
 logger = logging.getLogger(__name__)
+
+# Import enhanced features (with fallback if not available)
+try:
+    from .orchestrator.circuit_breaker import CircuitBreakerManager, CircuitBreaker
+    from .orchestrator.task_deduplication import TaskDeduplicator
+    from .orchestrator.load_balancer import LoadBalancer, LoadBalancingStrategy
+    ENHANCED_FEATURES_AVAILABLE = True
+except ImportError:
+    ENHANCED_FEATURES_AVAILABLE = False
+    logger.warning("Enhanced orchestrator features not available")
 
 
 class TaskStatus(Enum):
@@ -130,6 +149,9 @@ class Orchestrator:
         self,
         max_concurrent_tasks: int = 10,
         default_timeout: int = 300,
+        enable_deduplication: bool = True,
+        enable_load_balancing: bool = True,
+        enable_circuit_breaker: bool = True,
     ):
         self.registry = AgentRegistry()
         self.message_queue = MessageQueue()
@@ -138,8 +160,23 @@ class Orchestrator:
         
         self._tasks: dict[str, TaskResult] = {}
         self._running_tasks: set[str] = set()
+        self._cancelled_tasks: set[str] = set()
         self._lock = asyncio.Lock()
         self._shutdown = False
+        
+        # Enhanced features
+        if ENHANCED_FEATURES_AVAILABLE:
+            self._deduplicator = TaskDeduplicator() if enable_deduplication else None
+            self._load_balancer = LoadBalancer() if enable_load_balancing else None
+            self._circuit_breakers = CircuitBreakerManager() if enable_circuit_breaker else None
+        else:
+            self._deduplicator = None
+            self._load_balancer = None
+            self._circuit_breakers = None
+        
+        # Observability
+        self._tracer = get_tracer("orchestrator")
+        self._metrics = get_metrics()
         
         logger.info("Orchestrator initialized")
     
@@ -183,33 +220,70 @@ class Orchestrator:
         Returns:
             Task ID for tracking
         """
-        # Determine target agent if not specified
-        if not request.target_agent:
-            request.target_agent = self._route_task(request)
-        
-        # Create task result entry
-        self._tasks[request.id] = TaskResult(
-            task_id=request.id,
-            status=TaskStatus.QUEUED,
-            agent=request.target_agent or "unknown",
-            action=request.action,
-        )
-        
-        # Queue the task
-        message = Message(
-            id=request.id,
-            payload={
-                "request": request,
-            },
-            priority=request.priority,
-        )
-        await self.message_queue.enqueue(message)
-        
-        logger.info(
-            f"Task {request.id} queued for {request.target_agent}: {request.action}"
-        )
-        
-        return request.id
+        with self._tracer.span("orchestrator.submit_task", {
+            "task_id": request.id,
+            "action": request.action,
+        }):
+            # Check for duplicates
+            if self._deduplicator:
+                is_dup, existing_id = self._deduplicator.is_duplicate(
+                    request.action,
+                    request.target_agent,
+                    request.payload,
+                )
+                if is_dup:
+                    logger.info(f"Duplicate task detected, returning existing: {existing_id}")
+                    return existing_id
+            
+            # Determine target agent if not specified
+            if not request.target_agent:
+                request.target_agent = self._route_task(request)
+            
+            # Load balancing (if enabled)
+            if self._load_balancer and request.target_agent:
+                instance_id = await self._load_balancer.select_instance(request.target_agent)
+                if instance_id:
+                    request.metadata["instance_id"] = instance_id
+            
+            # Create task result entry
+            self._tasks[request.id] = TaskResult(
+                task_id=request.id,
+                status=TaskStatus.QUEUED,
+                agent=request.target_agent or "unknown",
+                action=request.action,
+            )
+            
+            # Register with deduplicator
+            if self._deduplicator:
+                self._deduplicator.register_task(
+                    request.id,
+                    request.action,
+                    request.target_agent,
+                    request.payload,
+                    "queued",
+                )
+            
+            # Queue the task
+            message = Message(
+                id=request.id,
+                payload={
+                    "request": request,
+                },
+                priority=request.priority,
+            )
+            await self.message_queue.enqueue(message)
+            
+            logger.info(
+                f"Task {request.id} queued for {request.target_agent}: {request.action}"
+            )
+            
+            # Record metrics
+            self._metrics.increment_counter(
+                "tasks_submitted",
+                labels={"agent": request.target_agent or "auto", "action": request.action},
+            )
+            
+            return request.id
     
     async def get_task_status(self, task_id: str) -> Optional[TaskResult]:
         """Get the status of a task."""
@@ -307,6 +381,15 @@ class Orchestrator:
         request: TaskRequest = message.payload["request"]
         task_id = request.id
         
+        # Check if cancelled
+        if task_id in self._cancelled_tasks:
+            async with self._lock:
+                self._tasks[task_id].status = TaskStatus.CANCELLED
+                self._tasks[task_id].error = "Task was cancelled"
+                self._tasks[task_id].completed_at = datetime.utcnow()
+                self._cancelled_tasks.discard(task_id)
+            return
+        
         async with self._lock:
             self._running_tasks.add(task_id)
             if task_id in self._tasks:
@@ -319,7 +402,12 @@ class Orchestrator:
             if not agent:
                 raise ValueError(f"Agent not found: {request.target_agent}")
             
-            # Execute the action
+            # Get circuit breaker
+            breaker = None
+            if self._circuit_breakers:
+                breaker = self._circuit_breakers.get_breaker(request.target_agent)
+            
+            # Execute with circuit breaker
             from agents.specialists import AgentMessage
             
             agent_message = AgentMessage(
@@ -327,39 +415,95 @@ class Orchestrator:
                 payload=request.payload,
             )
             
-            response = await asyncio.wait_for(
-                agent.process(agent_message),
-                timeout=request.timeout_seconds,
-            )
+            async def execute():
+                return await agent.process(agent_message)
+            
+            if breaker:
+                response = await breaker.call(execute)
+            else:
+                response = await asyncio.wait_for(
+                    execute(),
+                    timeout=request.timeout_seconds,
+                )
             
             # Update task result
             async with self._lock:
-                result = self._tasks[task_id]
-                result.status = (
-                    TaskStatus.COMPLETED if response.success else TaskStatus.FAILED
-                )
-                result.result = response.result
-                result.error = response.error
-                result.completed_at = datetime.utcnow()
-                result.duration_ms = response.duration_ms
-                result.metadata = response.metadata
+                if task_id in self._cancelled_tasks:
+                    self._tasks[task_id].status = TaskStatus.CANCELLED
+                    self._cancelled_tasks.discard(task_id)
+                else:
+                    result = self._tasks[task_id]
+                    result.status = (
+                        TaskStatus.COMPLETED if response.success else TaskStatus.FAILED
+                    )
+                    result.result = response.result
+                    result.error = response.error
+                    result.completed_at = datetime.utcnow()
+                    result.duration_ms = response.duration_ms
+                    result.metadata = response.metadata
                 
-        except asyncio.TimeoutError:
-            async with self._lock:
-                self._tasks[task_id].status = TaskStatus.FAILED
-                self._tasks[task_id].error = "Task execution timed out"
-                self._tasks[task_id].completed_at = datetime.utcnow()
+                # Update deduplicator
+                if self._deduplicator:
+                    status = "completed" if response.success else "failed"
+                    self._deduplicator.update_task_status(task_id, status)
+                
+                # Release load balancer
+                if self._load_balancer and request.target_agent:
+                    instance_id = request.metadata.get("instance_id")
+                    if instance_id:
+                        await self._load_balancer.release_instance(
+                            request.target_agent,
+                            instance_id,
+                        )
                 
         except Exception as e:
-            logger.error(f"Task {task_id} failed: {e}")
+            error_msg = str(e)
+            
+            # Check if it's a circuit breaker error
+            if "CircuitBreakerOpenError" in str(type(e)):
+                error_msg = f"Agent {request.target_agent} circuit breaker is open"
+            
+            logger.error(f"Task {task_id} failed: {error_msg}")
             async with self._lock:
-                self._tasks[task_id].status = TaskStatus.FAILED
-                self._tasks[task_id].error = str(e)
-                self._tasks[task_id].completed_at = datetime.utcnow()
+                if task_id not in self._cancelled_tasks:
+                    self._tasks[task_id].status = TaskStatus.FAILED
+                    self._tasks[task_id].error = error_msg
+                    self._tasks[task_id].completed_at = datetime.utcnow()
+                    
+                    if self._deduplicator:
+                        self._deduplicator.update_task_status(task_id, "failed")
         
         finally:
             async with self._lock:
                 self._running_tasks.discard(task_id)
+    
+    async def cancel_task(self, task_id: str) -> bool:
+        """
+        Cancel a running task.
+        
+        Args:
+            task_id: Task ID to cancel
+            
+        Returns:
+            True if task was cancelled, False if not found or already completed
+        """
+        async with self._lock:
+            if task_id not in self._tasks:
+                return False
+            
+            result = self._tasks[task_id]
+            
+            if result.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED):
+                return False
+            
+            # Mark as cancelled
+            self._cancelled_tasks.add(task_id)
+            result.status = TaskStatus.CANCELLED
+            result.error = "Task was cancelled by user"
+            result.completed_at = datetime.utcnow()
+            
+            logger.info(f"Task {task_id} cancelled")
+            return True
     
     async def execute_workflow(
         self,
@@ -407,16 +551,33 @@ class Orchestrator:
             1 for t in self._tasks.values()
             if t.status == TaskStatus.FAILED
         )
+        cancelled = sum(
+            1 for t in self._tasks.values()
+            if t.status == TaskStatus.CANCELLED
+        )
         
-        return {
+        metrics = {
             "total_tasks": total_tasks,
             "completed_tasks": completed,
             "failed_tasks": failed,
+            "cancelled_tasks": cancelled,
             "running_tasks": len(self._running_tasks),
             "queued_tasks": self.message_queue.size(),
             "success_rate": completed / max(total_tasks, 1),
             "registered_agents": len(self.registry.list_agents()),
         }
+        
+        # Add enhanced feature metrics
+        if self._deduplicator:
+            metrics["deduplication"] = self._deduplicator.get_stats()
+        
+        if self._load_balancer:
+            metrics["load_balancer"] = self._load_balancer.get_stats()
+        
+        if self._circuit_breakers:
+            metrics["circuit_breakers"] = self._circuit_breakers.list_breakers()
+        
+        return metrics
     
     async def health_check(self) -> dict[str, Any]:
         """Perform orchestrator health check."""

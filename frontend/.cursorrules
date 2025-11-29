@@ -1,0 +1,31 @@
+# Frontend Development Rules
+
+## Auto-Preview Setup
+
+1. **Live Server Extension**: Install "Live Server" extension in VS Code
+2. **Port Forwarding**: Port 3000 is forwarded automatically
+3. **Auto-Open**: Browser opens automatically when dev server starts
+
+## Development Commands
+
+```bash
+# Start with auto-open
+npm run dev:open
+
+# Or use script
+../scripts/start-frontend.sh
+```
+
+## Port Configuration
+
+- Frontend: `http://localhost:3000`
+- Backend API: `http://localhost:8000`
+- WebSocket: `ws://localhost:8000/ws`
+
+## Environment Variables
+
+Create `.env.local`:
+```
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws
+```
