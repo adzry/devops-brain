@@ -1,0 +1,12 @@
+name: import_all
+description: "Import org-wide GitHub metadata (repos, issues, pulls) via MCP."
+
+steps:
+  - name: list_repos
+    type: mcp
+    server: github
+    tool: repos.list
+    params: {}
+
+  # In a real system, additional steps would iterate, page, and store
+  # results under data/github/*.json. Here we define structure only.

@@ -1,0 +1,11 @@
+{
+  "mode": "org-wide",
+  "organizations": ["adzry"],
+  "includePrivate": true,
+  "includeUserRepos": true,
+  "repoAllowlist": [],
+  "repoDenylist": [],
+  "maxReposPerRun": 100,
+  "maxAgents": 32,
+  "maxNewAgentsPerDay": 4
+}

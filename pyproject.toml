@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "devops-brain"
+version = "0.1.0"
+description = "Config-driven DevOps Brain orchestrator"
+authors = [{ name = "adzry" }]
+requires-python = ">=3.9"
+dependencies = [
+  "pyyaml>=6.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

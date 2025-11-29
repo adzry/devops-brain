@@ -1,0 +1,14 @@
+{
+  "mcp": {
+    "servers": {
+      "github": {
+        "type": "stdio",
+        "command": "npx",
+        "args": ["@github/github-mcp-server", "stdio"],
+        "env": {
+          "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_pat}"
+        }
+      }
+    }
+  }
+}

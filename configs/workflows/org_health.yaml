@@ -1,0 +1,28 @@
+name: org_health
+description: "High-level organization health workflow using multiple specialist agents."
+
+steps:
+  - name: ci_analysis
+    type: agent
+    agent: ci
+    topic: "Analyze CI/workflow health across repos."
+
+  - name: security_analysis
+    type: agent
+    agent: security
+    topic: "Summarize security alerts and risky dependencies."
+
+  - name: repo_health_analysis
+    type: agent
+    agent: repo-health
+    topic: "Highlight unhealthy repos, ownership gaps, and structure issues."
+
+  - name: tests_analysis
+    type: agent
+    agent: tests
+    topic: "Assess coverage, flaky tests, and regression risk."
+
+  - name: policy_compliance
+    type: agent
+    agent: policy
+    topic: "Check policy/compliance concerns across key repos."

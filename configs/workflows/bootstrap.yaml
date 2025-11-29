@@ -1,0 +1,23 @@
+name: bootstrap
+description: >
+  One-time (or infrequent) bootstrap of DevOps Brain. Ensures required
+  directories exist and runs initial health checks.
+
+steps:
+  - name: ensure_directories
+    type: internal
+    action: ensure_directories
+    params:
+      paths:
+        - "data"
+        - "logs"
+        - "configs/workflows"
+        - "agents"
+        - "src/devops_brain"
+
+  - name: sanity_check
+    type: internal
+    action: log_message
+    params:
+      level: "info"
+      message: "Bootstrap workflow completed basic setup."
