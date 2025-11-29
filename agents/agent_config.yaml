@@ -2,7 +2,30 @@
 # Complete registry of cloud agents for automation
 
 version: "2.0.0"
-default_model: "gpt-5.1-codex-high"
+default_model: "gemini-2.0-flash-exp"  # Using Gemini 3 Pro (2.0-flash-exp) as default
+fallback_model: "gpt-4-turbo-preview"
+
+# LLM Provider Configuration
+llm_providers:
+  primary:
+    provider: "gemini"
+    model: "gemini-2.0-flash-exp"
+    temperature: 0.7
+    max_tokens: 8192
+    extra:
+      grounding: false  # Enable for fact-checking with Google Search
+      chunk_size: 1024
+      chunk_overlap: 200
+  fallback:
+    provider: "openai"
+    model: "gpt-4-turbo-preview"
+    temperature: 0.7
+    max_tokens: 4096
+  secondary_fallback:
+    provider: "anthropic"
+    model: "claude-3-5-sonnet-20241022"
+    temperature: 0.7
+    max_tokens: 4096
 
 # =============================================================================
 # CORE AGENTS
