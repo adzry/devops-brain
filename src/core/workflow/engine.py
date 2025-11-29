@@ -15,6 +15,7 @@ from .executor import WorkflowExecutor, ExecutionResult, WorkflowStatus
 from .scheduler import WorkflowScheduler
 from .webhooks import WebhookManager
 from .persistence import WorkflowRepository
+from .checkpointing import CheckpointManager
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ class WorkflowEngine:
         self._scheduler = WorkflowScheduler(self)
         self._webhooks = WebhookManager(self)
         self._repository = WorkflowRepository(db_connection)
+        self._checkpoints = CheckpointManager(db_connection)
     
     # ========================================================================
     # Workflow Management
@@ -195,6 +197,11 @@ class WorkflowEngine:
     def repository(self) -> WorkflowRepository:
         """Get workflow repository."""
         return self._repository
+    
+    @property
+    def checkpoints(self) -> CheckpointManager:
+        """Get checkpoint manager."""
+        return self._checkpoints
     
     async def initialize(self) -> None:
         """Initialize workflow engine and start services."""
