@@ -1,0 +1,322 @@
+# DevOps Brain Agent Configuration
+# Complete registry of cloud agents for automation
+
+version: "2.0.0"
+default_model: "gpt-5.1-codex-high"
+
+# =============================================================================
+# CORE AGENTS
+# =============================================================================
+
+agents:
+  root_agent:
+    name: "Root Agent"
+    type: "orchestrator"
+    description: "Primary orchestration agent for DevOps tasks"
+    model: "gpt-5.1-codex-high"
+    priority: 1
+    capabilities:
+      - code_generation
+      - repository_management
+      - workflow_orchestration
+      - mcp_integration
+      - agent_coordination
+    system_prompt_file: "prompts/root_agent.md"
+    settings:
+      max_delegation_depth: 3
+      parallel_tasks: 5
+      decision_confidence_threshold: 0.8
+
+  code_review_agent:
+    name: "Code Review Agent"
+    type: "specialist"
+    description: "Agent specialized in code review and quality assurance"
+    model: "gpt-5.1-codex-high"
+    priority: 2
+    capabilities:
+      - code_analysis
+      - security_scanning
+      - style_enforcement
+      - complexity_analysis
+      - best_practices_check
+    system_prompt_file: "prompts/code_review_agent.md"
+    settings:
+      review_depth: "comprehensive"
+      auto_approve_threshold: 0.95
+      max_issues_per_review: 50
+
+  deployment_agent:
+    name: "Deployment Agent"
+    type: "specialist"
+    description: "Agent for managing deployments and infrastructure"
+    model: "gpt-5.1-codex-high"
+    priority: 2
+    capabilities:
+      - infrastructure_management
+      - deployment_orchestration
+      - monitoring_setup
+      - rollback_execution
+      - blue_green_deployment
+    system_prompt_file: "prompts/deployment_agent.md"
+    settings:
+      deployment_strategy: "rolling"
+      health_check_interval: 30
+      rollback_on_failure: true
+
+# =============================================================================
+# SPECIALIST AGENTS
+# =============================================================================
+
+  security_agent:
+    name: "Security Agent"
+    type: "specialist"
+    description: "Security-focused agent for vulnerability detection and compliance"
+    model: "gpt-5.1-codex-high"
+    priority: 1  # High priority for security
+    capabilities:
+      - vulnerability_scanning
+      - dependency_audit
+      - secrets_detection
+      - compliance_checking
+      - threat_modeling
+      - penetration_testing
+      - security_advisory
+    system_prompt_file: "prompts/security_agent.md"
+    settings:
+      scan_depth: "deep"
+      severity_threshold: "medium"
+      compliance_frameworks:
+        - "OWASP"
+        - "SOC2"
+        - "GDPR"
+        - "HIPAA"
+      auto_block_critical: true
+
+  testing_agent:
+    name: "Testing Agent"
+    type: "specialist"
+    description: "Test generation, execution, and coverage analysis specialist"
+    model: "gpt-5.1-codex-high"
+    priority: 2
+    capabilities:
+      - test_generation
+      - test_execution
+      - coverage_analysis
+      - mutation_testing
+      - regression_detection
+      - flaky_test_detection
+      - test_optimization
+    system_prompt_file: "prompts/testing_agent.md"
+    settings:
+      coverage_target: 80
+      test_frameworks:
+        - "pytest"
+        - "jest"
+        - "mocha"
+        - "junit"
+      parallel_execution: true
+      smart_test_selection: true
+
+  documentation_agent:
+    name: "Documentation Agent"
+    type: "specialist"
+    description: "Automated documentation generation and maintenance"
+    model: "gpt-5.1-codex-high"
+    priority: 3
+    capabilities:
+      - api_documentation
+      - code_documentation
+      - readme_generation
+      - changelog_management
+      - diagram_generation
+      - tutorial_creation
+      - translation
+    system_prompt_file: "prompts/documentation_agent.md"
+    settings:
+      documentation_style: "comprehensive"
+      output_formats:
+        - "markdown"
+        - "html"
+        - "openapi"
+      auto_update_on_change: true
+      include_examples: true
+
+  performance_agent:
+    name: "Performance Agent"
+    type: "specialist"
+    description: "Performance optimization and profiling specialist"
+    model: "gpt-5.1-codex-high"
+    priority: 2
+    capabilities:
+      - performance_profiling
+      - bottleneck_detection
+      - optimization_suggestions
+      - load_testing
+      - memory_analysis
+      - query_optimization
+      - caching_strategy
+    system_prompt_file: "prompts/performance_agent.md"
+    settings:
+      profiling_depth: "detailed"
+      baseline_comparison: true
+      alert_on_regression: true
+      optimization_targets:
+        latency_p99: "500ms"
+        throughput: "1000rps"
+        memory_limit: "512MB"
+
+  incident_response_agent:
+    name: "Incident Response Agent"
+    type: "specialist"
+    description: "Production incident handling and troubleshooting"
+    model: "gpt-5.1-codex-high"
+    priority: 1  # Critical for incidents
+    capabilities:
+      - incident_triage
+      - root_cause_analysis
+      - log_analysis
+      - metric_correlation
+      - runbook_execution
+      - communication_management
+      - post_mortem_generation
+    system_prompt_file: "prompts/incident_response_agent.md"
+    settings:
+      auto_escalation: true
+      escalation_timeout_minutes: 15
+      severity_levels:
+        - "SEV1"  # Critical - immediate response
+        - "SEV2"  # High - 15 min response
+        - "SEV3"  # Medium - 1 hour response
+        - "SEV4"  # Low - next business day
+      notification_channels:
+        - "slack"
+        - "pagerduty"
+        - "email"
+
+  database_agent:
+    name: "Database Agent"
+    type: "specialist"
+    description: "Database optimization, migration, and management specialist"
+    model: "gpt-5.1-codex-high"
+    priority: 2
+    capabilities:
+      - schema_design
+      - migration_generation
+      - query_optimization
+      - index_recommendations
+      - backup_management
+      - replication_setup
+      - data_validation
+    system_prompt_file: "prompts/database_agent.md"
+    settings:
+      supported_databases:
+        - "postgresql"
+        - "mysql"
+        - "mongodb"
+        - "redis"
+      migration_strategy: "zero_downtime"
+      auto_backup_before_migration: true
+
+  infrastructure_agent:
+    name: "Infrastructure Agent"
+    type: "specialist"
+    description: "Infrastructure as Code and cloud resource management"
+    model: "gpt-5.1-codex-high"
+    priority: 2
+    capabilities:
+      - terraform_management
+      - kubernetes_orchestration
+      - cloud_provisioning
+      - cost_optimization
+      - resource_scaling
+      - network_configuration
+      - disaster_recovery
+    system_prompt_file: "prompts/infrastructure_agent.md"
+    settings:
+      iac_tools:
+        - "terraform"
+        - "pulumi"
+        - "cloudformation"
+      cloud_providers:
+        - "aws"
+        - "gcp"
+        - "azure"
+      drift_detection: true
+      cost_alerts: true
+
+  design_agent:
+    name: "Design System Agent"
+    type: "specialist"
+    description: "Design system management, Figma integration, and UI component generation"
+    model: "gpt-5.1-codex-high"
+    priority: 2
+    capabilities:
+      - design_token_sync
+      - component_generation
+      - figma_integration
+      - accessibility_audit
+      - style_guide_generation
+      - design_to_code
+      - ui_consistency_check
+      - theme_management
+    system_prompt_file: "prompts/design_agent.md"
+    settings:
+      figma_enabled: true
+      supported_frameworks:
+        - "react"
+        - "vue"
+        - "svelte"
+        - "html"
+      styling_methods:
+        - "tailwind"
+        - "css-modules"
+        - "styled-components"
+      accessibility_level: "WCAG_AA"
+      auto_sync_tokens: true
+      generate_tests: false
+      generate_stories: false
+
+# =============================================================================
+# ORCHESTRATION SETTINGS
+# =============================================================================
+
+orchestration:
+  max_concurrent_agents: 5
+  timeout_seconds: 300
+  retry_attempts: 2
+  fallback_model: "claude-4-sonnet"
+  
+  # Agent routing rules
+  routing:
+    - pattern: "security|vulnerability|CVE"
+      agent: "security_agent"
+      priority: "high"
+    - pattern: "test|coverage|spec"
+      agent: "testing_agent"
+    - pattern: "deploy|release|rollback"
+      agent: "deployment_agent"
+    - pattern: "incident|outage|alert"
+      agent: "incident_response_agent"
+      priority: "critical"
+    - pattern: "performance|slow|latency"
+      agent: "performance_agent"
+    - pattern: "document|readme|api"
+      agent: "documentation_agent"
+    - pattern: "database|migration|schema"
+      agent: "database_agent"
+    - pattern: "infrastructure|terraform|kubernetes"
+      agent: "infrastructure_agent"
+    - pattern: "design|figma|ui|component|style|theme|token"
+      agent: "design_agent"
+
+  # Inter-agent communication
+  collaboration:
+    enabled: true
+    message_queue: "internal"
+    broadcast_events:
+      - "deployment.started"
+      - "deployment.completed"
+      - "incident.detected"
+      - "security.vulnerability_found"
+      - "design.tokens_synced"
+      - "design.component_generated"

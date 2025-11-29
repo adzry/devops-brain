@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: devops-brain
+  labels:
+    app.kubernetes.io/name: devops-brain
+    app.kubernetes.io/component: namespace

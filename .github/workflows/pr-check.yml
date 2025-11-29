@@ -1,0 +1,125 @@
+name: PR Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  pr-validation:
+    name: Validate PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR title format
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          if [[ ! "$PR_TITLE" =~ ^(feat|fix|docs|style|refactor|test|chore|ci)(\(.+\))?:\ .+ ]]; then
+            echo "❌ PR title does not follow conventional commits format"
+            echo "Expected format: type(scope): description"
+            echo "Examples: feat(api): add new endpoint, fix(agent): resolve memory leak"
+            exit 1
+          fi
+          echo "✅ PR title format is valid"
+
+      - name: Check for breaking changes
+        run: |
+          # Check if there are any breaking changes in the diff
+          git diff origin/${{ github.base_ref }}..HEAD --name-only | while read file; do
+            if [[ "$file" == "src/api/"* ]]; then
+              echo "⚠️ API changes detected in: $file"
+            fi
+          done
+
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install ruff
+
+      - name: Check code formatting
+        run: |
+          ruff format --check . || {
+            echo "❌ Code is not properly formatted"
+            echo "Run 'ruff format .' to fix formatting issues"
+            exit 1
+          }
+
+      - name: Check linting
+        run: |
+          ruff check . || {
+            echo "❌ Linting errors found"
+            echo "Run 'ruff check --fix .' to auto-fix issues"
+            exit 1
+          }
+
+  test-changes:
+    name: Test Changed Files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov
+
+      - name: Get changed files
+        id: changed-files
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}..HEAD | grep -E '\.py$' | tr '\n' ' ')
+          echo "files=$CHANGED" >> $GITHUB_OUTPUT
+
+      - name: Run tests
+        run: |
+          pytest tests/ -v --tb=short
+
+  size-check:
+    name: PR Size Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR size
+        run: |
+          ADDITIONS=$(git diff --stat origin/${{ github.base_ref }}..HEAD | tail -1 | awk '{print $4}')
+          DELETIONS=$(git diff --stat origin/${{ github.base_ref }}..HEAD | tail -1 | awk '{print $6}')
+          TOTAL=$((${ADDITIONS:-0} + ${DELETIONS:-0}))
+          
+          echo "📊 PR Statistics:"
+          echo "  Additions: ${ADDITIONS:-0}"
+          echo "  Deletions: ${DELETIONS:-0}"
+          echo "  Total changes: $TOTAL"
+          
+          if [ "$TOTAL" -gt 1000 ]; then
+            echo "⚠️ Large PR detected ($TOTAL lines changed)"
+            echo "Consider breaking this into smaller PRs for easier review"
+          else
+            echo "✅ PR size is manageable"
+          fi

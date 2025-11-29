@@ -1,0 +1,97 @@
+# Continuous Integration Workflow
+# Triggered on pushes to main and feature branches
+
+name: ci_workflow
+description: "Continuous integration pipeline for code quality and testing"
+version: "1.0.0"
+
+triggers:
+  - event: push
+    branches:
+      - main
+      - "feature/*"
+      - "fix/*"
+  - event: schedule
+    cron: "0 2 * * *"  # Daily at 2 AM
+
+environment:
+  node_version: "20"
+  python_version: "3.11"
+
+stages:
+  - name: setup
+    description: "Setup build environment"
+    steps:
+      - action: checkout
+        with:
+          fetch_depth: 0
+      
+      - action: setup_cache
+        paths:
+          - node_modules
+          - .cache
+          - __pycache__
+
+  - name: lint
+    description: "Code linting and formatting checks"
+    parallel: true
+    steps:
+      - action: run_command
+        command: "npm run lint"
+        continue_on_error: false
+      
+      - action: run_command
+        command: "python -m ruff check ."
+        continue_on_error: false
+
+  - name: test
+    description: "Run test suites"
+    needs: [lint]
+    parallel: true
+    steps:
+      - action: run_command
+        name: unit_tests
+        command: "npm test"
+        coverage: true
+        
+      - action: run_command
+        name: python_tests
+        command: "pytest --cov=. --cov-report=xml"
+        
+  - name: build
+    description: "Build artifacts"
+    needs: [test]
+    steps:
+      - action: run_command
+        command: "npm run build"
+        
+      - action: upload_artifact
+        name: build_output
+        path: dist/
+
+  - name: security_scan
+    description: "Security vulnerability scanning"
+    parallel: true
+    steps:
+      - action: dependency_scan
+        tool: "npm audit"
+        
+      - action: code_scan
+        tool: "semgrep"
+        config: "p/security-audit"
+
+artifacts:
+  - name: test_coverage
+    path: coverage/
+    retention_days: 30
+    
+  - name: build_artifacts
+    path: dist/
+    retention_days: 90
+
+notifications:
+  on_failure:
+    - channel: email
+      recipients: ["team@example.com"]
+    - channel: slack
+      webhook: "${SLACK_WEBHOOK_URL}"

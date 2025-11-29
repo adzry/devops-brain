@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: devops-brain-config
+  namespace: devops-brain
+  labels:
+    app.kubernetes.io/name: devops-brain
+    app.kubernetes.io/component: config
+data:
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+  PORT: "8000"
+  WORKERS: "4"
+  
+  # Agent configuration
+  MAX_CONCURRENT_AGENTS: "10"
+  AGENT_TIMEOUT_SECONDS: "300"
+  
+  # Queue configuration
+  QUEUE_MAX_SIZE: "10000"
+  QUEUE_PROCESSING_INTERVAL: "100"
