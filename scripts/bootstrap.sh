@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
+set -e
 
-set -euo pipefail
+# Simple bootstrap runner for DevOps Brain
+# Usage: ./scripts/bootstrap.sh
 
-if [ ! -d ".venv" ]; then
-  python3 -m venv .venv
+if [ -z "$VIRTUAL_ENV" ]; then
+  echo "[devops-brain] Warning: no virtualenv active. Consider creating one."
 fi
 
-source .venv/bin/activate
-pip install --upgrade pip
-pip install -e ".[dev]"
-
-echo "DevOps Brain environment ready. Try: devops-brain status"
+python -m devops_brain.cli bootstrap

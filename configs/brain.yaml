@@ -1,46 +1,147 @@
 version: "1.0"
+
 metadata:
-  environment: local
-  owner: platform-team@example.com
-  mission: "Bootstrap DevOps Brain automation locally"
+  name: devops-brain
+  owner: "platform-team"
+  description: "Org-wide automation brain for GitHub, CI/CD, security and operations."
+
+mcp:
+  github:
+    enabled: true
+    server: "github"
+    default_orgs:
+      - "adzry"
+
 agents:
-  - name: planner
-    role: planner
-    model: gpt-4o
-    description: "Root planner responsible for high-level strategies"
-    skills:
-      - release planning
-      - incident triage
-  - name: executor
-    role: executor
-    model: claude-3-sonnet
-    description: "Executes workflows through adapters"
-    skills:
-      - kubernetes
-      - github-actions
-  - name: observer
-    role: observer
-    model: gpt-4o-mini
-    description: "Validates outcomes and reports back"
-    skills:
-      - telemetry
-      - reporting
-workflows:
-  - name: release
-    path: workflows/release.yaml
-  - name: incident
-    path: workflows/incident.yaml
-mcp_adapters:
-  - name: github
-    type: github
-    settings:
-      repo: org/repo
-      workflow: release.yml
-  - name: kubernetes
-    type: kubernetes
-    settings:
-      namespace: production
+  # ROOT (sovereign)
+  - name: root
+    role: root
+    kind: sovereign
+    description: >
+      Single sovereign agent responsible for architecture, workflows, and file changes.
+    write_access: true
+    domains:
+      - architecture
+      - orchestration
+      - governance
+
+  # ORIGINAL 7 SPECIALISTS
   - name: ci
-    type: ci
-    settings:
-      pipeline: release
+    role: ci
+    kind: specialist
+    description: "CI/CD pipelines, GitHub Actions, build health."
+    write_access: false
+    domains: [ "ci", "workflows", "build" ]
+
+  - name: security
+    role: security
+    kind: specialist
+    description: "Dependencies, security alerts, and risk analysis."
+    write_access: false
+    domains: [ "security", "dependencies", "alerts" ]
+
+  - name: release
+    role: release
+    kind: specialist
+    description: "Releases, versioning, tags, changelogs."
+    write_access: false
+    domains: [ "releases", "versioning" ]
+
+  - name: refactor
+    role: refactor
+    kind: specialist
+    description: "Architecture and code refactoring."
+    write_access: false
+    domains: [ "refactor", "architecture" ]
+
+  - name: dependencies
+    role: dependencies
+    kind: specialist
+    description: "Dependency graph and upgrades."
+    write_access: false
+    domains: [ "dependencies", "updates" ]
+
+  - name: repo-health
+    role: repo_health
+    kind: specialist
+    description: "Repo structure, ownership signals, maintainability."
+    write_access: false
+    domains: [ "structure", "ownership", "metrics" ]
+
+  - name: tests
+    role: tests
+    kind: specialist
+    description: "Test coverage, regression risk, flaky tests."
+    write_access: false
+    domains: [ "tests", "coverage", "quality" ]
+
+  # NEXT 10 ADVANCED AGENTS
+  - name: policy
+    role: policy
+    kind: specialist
+    description: "Policy enforcement, coding standards, compliance with org rules."
+    write_access: false
+    domains: [ "policy", "standards", "linting" ]
+
+  - name: sre
+    role: sre
+    kind: specialist
+    description: "Reliability, incident patterns, SLO/SLA impact."
+    write_access: false
+    domains: [ "reliability", "sre", "observability" ]
+
+  - name: incident
+    role: incident
+    kind: specialist
+    description: "Incident triage, root-cause hypotheses, postmortem scaffolding."
+    write_access: false
+    domains: [ "incidents", "postmortems" ]
+
+  - name: analytics
+    role: analytics
+    kind: specialist
+    description: "Dev productivity metrics, repo activity analytics."
+    write_access: false
+    domains: [ "metrics", "analytics" ]
+
+  - name: docs
+    role: docs
+    kind: specialist
+    description: "Documentation quality, gaps, and automated docs changes proposals."
+    write_access: false
+    domains: [ "docs", "knowledge" ]
+
+  - name: performance
+    role: performance
+    kind: specialist
+    description: "Performance hotspots in code and infra."
+    write_access: false
+    domains: [ "performance", "optimization" ]
+
+  - name: infra
+    role: infra
+    kind: specialist
+    description: "Infrastructure-as-code, environments, and platform config."
+    write_access: false
+    domains: [ "infra", "iac", "platform" ]
+
+  - name: feature
+    role: feature
+    kind: specialist
+    description: "Feature planning and cross-repo impact analysis."
+    write_access: false
+    domains: [ "features", "planning" ]
+
+  - name: onboarding
+    role: onboarding
+    kind: specialist
+    description: "Onboarding paths, starter issues, repo discoverability."
+    write_access: false
+    domains: [ "onboarding", "starter-tasks" ]
+
+  - name: compliance
+    role: compliance
+    kind: specialist
+    description: "Compliance-oriented checks and guardrails (licenses, data handling)."
+    write_access: false
+    domains: [ "compliance", "licenses" ]

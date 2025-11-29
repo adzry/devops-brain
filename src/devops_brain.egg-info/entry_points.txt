@@ -1,2 +1,0 @@
-[console_scripts]
-devops-brain = devops_brain.cli:app

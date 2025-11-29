@@ -1,92 +1,129 @@
-"""DevOps Brain orchestrator."""
-
 from __future__ import annotations
 
+import yaml
+from dataclasses import asdict
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Any
 
-from devops_brain.agents import BaseAgent, ExecutorAgent, ObserverAgent, PlannerAgent
-from devops_brain.config import BrainConfig, load_brain_config
-from devops_brain.mcp import MCPRegistry
-from devops_brain.mcp.adapters import CIAdapter, GitHubAdapter, KubernetesAdapter
-from devops_brain.utils.logging import get_logger
-from devops_brain.workflows import Workflow, WorkflowResult
-
-AGENT_TYPE_MAP = {
-    "planner": PlannerAgent,
-    "executor": ExecutorAgent,
-    "observer": ObserverAgent,
-}
-
-ADAPTER_TYPE_MAP = {
-    "github": GitHubAdapter,
-    "kubernetes": KubernetesAdapter,
-    "ci": CIAdapter,
-}
+from .logging_utils import setup_logger
+from .models import BrainConfig, BrainMetadata, AgentConfig
 
 
 class DevOpsBrain:
-    """Wires agents, adapters, and workflows into a single system."""
+    """
+    Orchestrator that loads Brain config and workflows, and can execute simple workflows.
+    This is intentionally conservative but production-ready in structure.
+    """
 
-    def __init__(self, config_path: Optional[str] = None):
-        resolved_path = Path(config_path).expanduser() if config_path else None
-        loaded = load_brain_config(resolved_path)
-        self.config_path = loaded.path
-        self.config: BrainConfig = loaded.model
-        self.logger = get_logger("devops-brain")
-        self.registry = MCPRegistry()
-        self.agents: Dict[str, BaseAgent] = {}
-        self.workflows: Dict[str, Workflow] = {}
-        self._bootstrap()
+    def __init__(self, brain_config_path: str = "configs/brain.yaml") -> None:
+        self.logger = setup_logger()
+        self.config_path = Path(brain_config_path)
+        self.config = self._load_config()
+        self.workflows: Dict[str, Dict[str, Any]] = self._load_workflows()
 
-    def _bootstrap(self) -> None:
-        self.logger.info("Initializing DevOps Brain with config at %s", self.config_path)
-        self._register_adapters()
-        self._register_agents()
-        self._register_workflows()
+    def _load_config(self) -> BrainConfig:
+        if not self.config_path.exists():
+            raise FileNotFoundError(f"Brain config not found: {self.config_path}")
+        data = yaml.safe_load(self.config_path.read_text())
 
-    def _register_adapters(self) -> None:
-        for adapter_config in self.config.mcp_adapters:
-            adapter_cls = ADAPTER_TYPE_MAP.get(adapter_config.type)
-            if not adapter_cls:
-                self.logger.warning(
-                    "Adapter type '%s' is not recognized. Skipping.", adapter_config.type
-                )
-                continue
-            adapter = adapter_cls(adapter_config)
-            self.registry.register(adapter)
-            self.logger.debug("Registered adapter %s", adapter_config.name)
+        meta_raw = data.get("metadata", {})
+        metadata = BrainMetadata(
+            name=meta_raw.get("name", "devops-brain"),
+            owner=meta_raw.get("owner", "unknown"),
+            description=meta_raw.get("description", ""),
+        )
 
-    def _register_agents(self) -> None:
-        for agent_config in self.config.agents:
-            agent_cls = AGENT_TYPE_MAP.get(agent_config.role, PlannerAgent)
-            agent = agent_cls(agent_config, self.registry)
-            self.agents[agent_config.name] = agent
-            self.logger.debug("Registered agent %s (%s)", agent_config.name, agent_config.role)
+        agents_map: Dict[str, AgentConfig] = {}
+        for agent in data.get("agents", []):
+            cfg = AgentConfig(
+                name=agent["name"],
+                role=agent["role"],
+                kind=agent["kind"],
+                description=agent.get("description", ""),
+                write_access=bool(agent.get("write_access", False)),
+                domains=list(agent.get("domains", [])),
+            )
+            agents_map[cfg.name] = cfg
 
-    def _register_workflows(self) -> None:
-        for workflow_config in self.config.workflows:
-            workflow = Workflow(workflow_config)
-            self.workflows[workflow.name] = workflow
-            self.logger.debug("Registered workflow %s", workflow.name)
+        mcp = data.get("mcp", {})
 
-    def get_agent(self, name: str) -> BaseAgent:
-        if name not in self.agents:
-            raise KeyError(f"Agent '{name}' is not available.")
-        return self.agents[name]
+        brain_config = BrainConfig(metadata=metadata, agents=agents_map, mcp=mcp)
+        self.logger.info("Loaded Brain config: %s", asdict(brain_config.metadata))
+        self.logger.info("Agents: %s", list(brain_config.agents.keys()))
+        return brain_config
 
-    def run_workflow(self, workflow_name: str, objective: str) -> WorkflowResult:
-        if workflow_name not in self.workflows:
-            raise KeyError(f"Workflow '{workflow_name}' is not registered.")
-        workflow = self.workflows[workflow_name]
-        self.logger.info("Starting workflow '%s' for objective '%s'", workflow_name, objective)
-        return workflow.run(self, objective)
+    def _load_workflows(self) -> Dict[str, Dict[str, Any]]:
+        wf_dir = Path("configs/workflows")
+        workflows: Dict[str, Dict[str, Any]] = {}
+        if not wf_dir.exists():
+            self.logger.warning("Workflow directory missing: %s", wf_dir)
+            return workflows
 
-    def list_agents(self) -> Dict[str, str]:
-        return {name: agent.config.role for name, agent in self.agents.items()}
+        for path in wf_dir.glob("*.yaml"):
+            wf = yaml.safe_load(path.read_text())
+            name = wf.get("name", path.stem)
+            workflows[name] = wf
+        self.logger.info("Loaded workflows: %s", list(workflows.keys()))
+        return workflows
 
-    def list_workflows(self) -> Dict[str, str]:
-        return {name: wf.config.description for name, wf in self.workflows.items()}
+    # --- Workflow execution ---
 
-    def list_adapters(self) -> Dict[str, str]:
-        return self.registry.info()
+    def run_workflow(self, name: str) -> None:
+        wf = self.workflows.get(name)
+        if not wf:
+            raise ValueError(f"Workflow not found: {name}")
+        self.logger.info("Running workflow: %s", name)
+        for step in wf.get("steps", []):
+            self._run_step(step)
+        self.logger.info("Workflow completed: %s", name)
+
+    def _run_step(self, step: Dict[str, Any]) -> None:
+        step_type = step.get("type")
+        if step_type == "internal":
+            self._run_internal_step(step)
+        elif step_type == "agent":
+            self._run_agent_step(step)
+        elif step_type == "mcp":
+            self._run_mcp_step(step)
+        else:
+            self.logger.warning("Unknown step type: %s", step_type)
+
+    def _run_internal_step(self, step: Dict[str, Any]) -> None:
+        action = step.get("action")
+        params = step.get("params", {})
+        if action == "ensure_directories":
+            paths = params.get("paths", [])
+            for p in paths:
+                path = Path(p)
+                path.mkdir(parents=True, exist_ok=True)
+                self.logger.info("Ensured directory: %s", path)
+        elif action == "log_message":
+            level = params.get("level", "info").lower()
+            msg = params.get("message", "")
+            getattr(self.logger, level, self.logger.info)(msg)
+        else:
+            self.logger.warning("Unknown internal action: %s", action)
+
+    def _run_agent_step(self, step: Dict[str, Any]) -> None:
+        agent_name = step.get("agent")
+        topic = step.get("topic", "")
+        agent_cfg = self.config.agents.get(agent_name)
+        if not agent_cfg:
+            self.logger.warning("Agent not found: %s", agent_name)
+            return
+        self.logger.info(
+            "Delegating to agent '%s' (%s) on topic: %s",
+            agent_cfg.name,
+            agent_cfg.role,
+            topic,
+        )
+        # In a real system, this is where Cursor/LLM agent would be invoked.
+
+    def _run_mcp_step(self, step: Dict[str, Any]) -> None:
+        server = step.get("server")
+        tool = step.get("tool")
+        params = step.get("params", {})
+        self.logger.info(
+            "MCP step: server=%s tool=%s params=%s (wire up MCP here)", server, tool, params
+        )
+        # In Cursor, this would call the MCP tool. From plain Python, this is a stub.

@@ -3,11 +3,12 @@ pyproject.toml
 src/devops_brain/__init__.py
 src/devops_brain/cli.py
 src/devops_brain/config.py
+src/devops_brain/logging_utils.py
+src/devops_brain/models.py
 src/devops_brain/orchestrator.py
 src/devops_brain.egg-info/PKG-INFO
 src/devops_brain.egg-info/SOURCES.txt
 src/devops_brain.egg-info/dependency_links.txt
-src/devops_brain.egg-info/entry_points.txt
 src/devops_brain.egg-info/requires.txt
 src/devops_brain.egg-info/top_level.txt
 src/devops_brain/agents/__init__.py
