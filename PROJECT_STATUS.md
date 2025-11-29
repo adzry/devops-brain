@@ -101,12 +101,18 @@
 - ✅ Rate limiting (token bucket + sliding window)
 - ✅ RBAC middleware
 
-### Workflow Engine
+### Workflow Engine (Enhanced)
 - ✅ DAG-based execution
 - ✅ Parallel node execution
 - ✅ Conditional branching
 - ✅ Retry logic
 - ✅ Fluent builder API
+- ✅ **Cron-based scheduling** (N8n-like)
+- ✅ **Webhook triggers** with secret validation
+- ✅ **Workflow persistence** (database storage)
+- ✅ **Workflow templates** (CI, Deploy, Security, etc.)
+- ✅ **REST API** for workflow management
+- ✅ **Execution history** and analytics
 
 ### Python SDK
 - ✅ Async client with retries

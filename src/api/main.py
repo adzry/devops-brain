@@ -40,6 +40,19 @@ async def lifespan(app: FastAPI):
     # Register default agents (in production, load from config)
     await _register_agents(orchestrator)
     
+    # Initialize workflow engine
+    from src.core.workflow import WorkflowEngine
+    workflow_engine = WorkflowEngine(orchestrator=orchestrator)
+    await workflow_engine.initialize()
+    
+    # Set workflow engine in routes
+    from src.api.routes import workflows as workflow_routes
+    workflow_routes.set_workflow_engine(workflow_engine)
+    
+    # Store in app state
+    app.state.orchestrator = orchestrator
+    app.state.workflow_engine = workflow_engine
+    
     logger.info("DevOps Brain API started successfully")
     
     yield
@@ -48,6 +61,11 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down DevOps Brain API...")
     if orchestrator:
         await orchestrator.stop()
+    
+    # Shutdown workflow engine
+    if hasattr(app.state, "workflow_engine"):
+        await app.state.workflow_engine.shutdown()
+    
     logger.info("DevOps Brain API stopped")
 
 
@@ -123,11 +141,12 @@ def create_app() -> FastAPI:
     )
     
     # Include routers
-    from .routes import agents, tasks, health, design
+    from .routes import agents, tasks, health, design, workflows
     app.include_router(health.router, tags=["Health"])
     app.include_router(agents.router, prefix="/api/v1/agents", tags=["Agents"])
     app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["Tasks"])
     app.include_router(design.router, prefix="/api/v1", tags=["Design"])
+    app.include_router(workflows.router, prefix="/api/v1", tags=["Workflows"])
     
     # WebSocket endpoint
     @app.websocket("/ws")

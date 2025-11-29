@@ -12,6 +12,9 @@ from typing import Any, Optional
 
 from .dag import DAG, Node, NodeType
 from .executor import WorkflowExecutor, ExecutionResult, WorkflowStatus
+from .scheduler import WorkflowScheduler
+from .webhooks import WebhookManager
+from .persistence import WorkflowRepository
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +42,7 @@ class WorkflowEngine:
         self,
         config: Optional[WorkflowConfig] = None,
         orchestrator=None,
+        db_connection=None,
     ):
         self.config = config or WorkflowConfig()
         self.orchestrator = orchestrator
@@ -47,6 +51,11 @@ class WorkflowEngine:
         self._runs: dict[str, ExecutionResult] = {}
         self._executor = WorkflowExecutor(orchestrator)
         self._semaphore = asyncio.Semaphore(self.config.max_concurrent_workflows)
+        
+        # Enhanced features
+        self._scheduler = WorkflowScheduler(self)
+        self._webhooks = WebhookManager(self)
+        self._repository = WorkflowRepository(db_connection)
     
     # ========================================================================
     # Workflow Management
@@ -167,6 +176,53 @@ class WorkflowEngine:
     def create_workflow(self, name: str) -> "WorkflowBuilder":
         """Create a new workflow using builder pattern."""
         return WorkflowBuilder(name, self)
+    
+    # ========================================================================
+    # Enhanced Features
+    # ========================================================================
+    
+    @property
+    def scheduler(self) -> WorkflowScheduler:
+        """Get workflow scheduler."""
+        return self._scheduler
+    
+    @property
+    def webhooks(self) -> WebhookManager:
+        """Get webhook manager."""
+        return self._webhooks
+    
+    @property
+    def repository(self) -> WorkflowRepository:
+        """Get workflow repository."""
+        return self._repository
+    
+    async def initialize(self) -> None:
+        """Initialize workflow engine and start services."""
+        await self._scheduler.start()
+        logger.info("Workflow engine initialized")
+    
+    async def shutdown(self) -> None:
+        """Shutdown workflow engine."""
+        await self._scheduler.stop()
+        logger.info("Workflow engine shut down")
+    
+    async def save_workflow(
+        self,
+        dag: DAG,
+        metadata: Optional[dict] = None,
+    ) -> str:
+        """Save workflow to persistence layer."""
+        workflow_dict = dag.to_dict()
+        return await self._repository.save(workflow_dict, metadata)
+    
+    async def load_workflow(self, workflow_id: str) -> Optional[DAG]:
+        """Load workflow from persistence layer."""
+        workflow_data = await self._repository.load(workflow_id)
+        if not workflow_data:
+            return None
+        
+        definition = workflow_data.get("definition", workflow_data)
+        return DAG.from_dict(definition)
 
 
 class WorkflowBuilder:
