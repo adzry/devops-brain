@@ -1,210 +1,233 @@
 # DevOps Brain 🧠
 
-A comprehensive automation platform for bootstrapping Cursor cloud agents, orchestrating automation workflows, and integrating with external services via MCP adapters.
+A comprehensive AI-powered DevOps automation platform featuring cloud agents, automation workflows, MCP adapters, and a full-stack runtime.
 
-## Overview
+## Features
 
-DevOps Brain provides:
-
-- **Cloud Agents** - Configurable AI agents for code review, deployment, and orchestration
-- **Automation Workflows** - YAML-defined pipelines for CI/CD, PR automation, and deployments
-- **MCP Adapters** - Model Context Protocol integrations with GitHub, Slack, databases, and monitoring services
-
-## Project Structure
-
-```
-devops-brain/
-├── agents/                 # Cloud agent configurations
-│   ├── agent_config.yaml   # Agent definitions and capabilities
-│   └── README.md
-├── workflows/              # Automation workflow definitions
-│   ├── pr_workflow.yaml    # Pull request automation
-│   ├── ci_workflow.yaml    # Continuous integration
-│   ├── deploy_workflow.yaml# Deployment pipelines
-│   └── README.md
-├── mcp/                    # MCP adapters
-│   ├── adapters/           # Adapter implementations
-│   │   ├── base_adapter.py
-│   │   ├── github_adapter.py
-│   │   ├── slack_adapter.py
-│   │   ├── database_adapter.py
-│   │   └── monitoring_adapter.py
-│   ├── mcp_config.yaml     # Adapter configuration
-│   └── README.md
-├── config/                 # Global configuration
-│   └── settings.yaml
-├── scripts/                # Utility scripts
-│   └── setup.sh
-├── requirements.txt        # Python dependencies
-└── README.md
-```
+- **🤖 Specialist Agents** - AI agents for security, testing, documentation, performance, incidents, database, and infrastructure
+- **⚙️ Orchestrator** - Central coordinator for task routing and agent management
+- **🔌 MCP Adapters** - Integrations with GitHub, Slack, databases, and monitoring services
+- **🚀 REST API** - FastAPI-based API for external access
+- **💻 CLI** - Command-line interface for local interactions
+- **🐳 Docker** - Containerized deployment with docker-compose
+- **☸️ Kubernetes** - Production-ready K8s manifests with HPA, PDB, and Ingress
 
 ## Quick Start
 
 ### Prerequisites
 
 - Python 3.11+
-- Git
+- Docker & Docker Compose (for containerized deployment)
+- kubectl (for Kubernetes deployment)
 
-### Installation
+### Local Development
 
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd devops-brain
-   ```
+```bash
+# Clone and setup
+git clone <repository-url>
+cd devops-brain
+./scripts/setup.sh
 
-2. Run the setup script:
-   ```bash
-   ./scripts/setup.sh
-   ```
+# Activate virtual environment
+source .venv/bin/activate
 
-3. Configure your environment:
-   ```bash
-   # Edit .env with your credentials
-   vi .env
-   ```
+# Run the API server
+uvicorn src.api.main:app --reload
 
-4. Activate the virtual environment:
-   ```bash
-   source .venv/bin/activate
-   ```
+# Or use the CLI
+python -m src.cli.main --help
+```
+
+### Docker Deployment
+
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f app
+
+# Stop services
+docker-compose down
+```
+
+### Kubernetes Deployment
+
+```bash
+# Apply manifests
+kubectl apply -k docker/kubernetes/
+
+# Check status
+kubectl get pods -n devops-brain
+
+# Port forward for local access
+kubectl port-forward -n devops-brain svc/devops-brain-api 8000:80
+```
+
+## Project Structure
+
+```
+devops-brain/
+├── agents/                     # Cloud agent configurations
+│   ├── specialists/            # Agent implementations
+│   │   ├── security_agent.py
+│   │   ├── testing_agent.py
+│   │   ├── documentation_agent.py
+│   │   ├── performance_agent.py
+│   │   ├── incident_response_agent.py
+│   │   ├── database_agent.py
+│   │   └── infrastructure_agent.py
+│   └── prompts/                # System prompts
+├── src/
+│   ├── core/                   # Core components
+│   │   ├── orchestrator.py     # Agent orchestrator
+│   │   └── message_queue.py    # Priority message queue
+│   ├── api/                    # FastAPI application
+│   │   ├── main.py
+│   │   └── routes/
+│   └── cli/                    # CLI application
+│       └── main.py
+├── mcp/                        # MCP adapters
+│   └── adapters/
+├── workflows/                  # Automation workflows
+├── tests/                      # Test suite
+├── docker/                     # Docker configurations
+│   ├── kubernetes/             # K8s manifests
+│   ├── postgres/
+│   └── prometheus/
+├── .github/workflows/          # CI/CD pipelines
+├── Dockerfile
+├── docker-compose.yml
+└── requirements.txt
+```
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | API information |
+| `/health` | GET | Health check |
+| `/health/live` | GET | Liveness probe |
+| `/health/ready` | GET | Readiness probe |
+| `/metrics` | GET | Prometheus metrics |
+| `/api/v1/agents` | GET | List agents |
+| `/api/v1/agents/{name}` | GET | Get agent info |
+| `/api/v1/agents/{name}/execute` | POST | Execute agent action |
+| `/api/v1/tasks` | GET | List tasks |
+| `/api/v1/tasks/submit` | POST | Submit async task |
+| `/api/v1/tasks/execute` | POST | Execute sync task |
+| `/api/v1/execute` | POST | Quick task execution |
+
+## CLI Commands
+
+```bash
+# Check status
+devops-brain status
+
+# Execute an action
+devops-brain execute scan_vulnerabilities -p '{"target": "src/"}'
+
+# List agents
+devops-brain agents list
+
+# Run security scan
+devops-brain scan security --target src/
+
+# Generate tests
+devops-brain test generate src/api.py
+
+# Analyze infrastructure costs
+devops-brain infra costs --range 30d
+```
+
+## Specialist Agents
+
+| Agent | Capabilities |
+|-------|-------------|
+| **Security Agent** | Vulnerability scanning, secrets detection, compliance checking, threat modeling |
+| **Testing Agent** | Test generation, execution, coverage analysis, mutation testing |
+| **Documentation Agent** | API docs, README generation, changelog, diagrams |
+| **Performance Agent** | Profiling, bottleneck detection, load testing, caching strategies |
+| **Incident Response Agent** | Triage, root cause analysis, runbook execution, post-mortems |
+| **Database Agent** | Schema design, migrations, query optimization, backups |
+| **Infrastructure Agent** | Terraform, Kubernetes, cost optimization, drift detection |
 
 ## Configuration
 
 ### Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `GITHUB_TOKEN` | GitHub personal access token | Yes |
-| `SLACK_BOT_TOKEN` | Slack bot OAuth token | Yes |
-| `DATABASE_URL` | PostgreSQL connection string | Yes |
-| `DATADOG_API_KEY` | Datadog API key | Optional |
-
-### Agent Configuration
-
-Agents are defined in `agents/agent_config.yaml`:
-
-```yaml
-agents:
-  root_agent:
-    name: "Root Agent"
-    model: "gpt-5.1-codex-high"
-    capabilities:
-      - code_generation
-      - workflow_orchestration
-```
-
-### Workflow Configuration
-
-Workflows are YAML files in the `workflows/` directory:
-
-```yaml
-name: my_workflow
-triggers:
-  - event: push
-stages:
-  - name: build
-    steps:
-      - action: run_command
-        command: "npm run build"
-```
-
-## MCP Adapters
-
-### GitHub Adapter
-
-```python
-from mcp.adapters import GitHubAdapter
-
-adapter = GitHubAdapter(config)
-await adapter.create_pull_request(
-    owner="org",
-    repo="repo",
-    title="Feature: New functionality",
-    body="Description",
-    base="main",
-    head="feature/branch"
-)
-```
-
-### Slack Adapter
-
-```python
-from mcp.adapters import SlackAdapter
-
-adapter = SlackAdapter(config)
-await adapter.send_deployment_notification(
-    environment="production",
-    version="v1.2.3",
-    status="success"
-)
-```
-
-### Database Adapter
-
-```python
-from mcp.adapters import DatabaseAdapter
-
-adapter = DatabaseAdapter(config)
-result = await adapter.select("SELECT * FROM users LIMIT 10")
-```
-
-### Monitoring Adapter
-
-```python
-from mcp.adapters import MonitoringAdapter
-
-adapter = MonitoringAdapter(config)
-await adapter.send_deployment_event(
-    version="v1.2.3",
-    environment="production",
-    status="success"
-)
-```
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ENVIRONMENT` | Environment name | development |
+| `LOG_LEVEL` | Logging level | INFO |
+| `DATABASE_URL` | PostgreSQL connection string | - |
+| `REDIS_URL` | Redis connection string | - |
+| `GITHUB_TOKEN` | GitHub API token | - |
+| `SLACK_BOT_TOKEN` | Slack bot token | - |
 
 ## Development
 
 ### Running Tests
 
 ```bash
+# Run all tests
 pytest
+
+# Run with coverage
+pytest --cov=src --cov=agents --cov-report=html
+
+# Run specific tests
+pytest tests/agents/test_security_agent.py -v
 ```
 
 ### Linting
 
 ```bash
+# Check code
 ruff check .
-```
 
-### Type Checking
+# Format code
+ruff format .
 
-```bash
-mypy .
+# Type checking
+mypy src/ agents/
 ```
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      DevOps Brain                           │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │ Root Agent  │  │ Code Review │  │ Deployment  │         │
-│  │             │  │   Agent     │  │   Agent     │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-├─────────────────────────────────────────────────────────────┤
-│                   Workflow Engine                           │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │ PR Workflow │  │ CI Workflow │  │   Deploy    │         │
-│  │             │  │             │  │  Workflow   │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-├─────────────────────────────────────────────────────────────┤
-│                    MCP Adapters                             │
-│  ┌────────┐  ┌────────┐  ┌──────────┐  ┌────────────┐      │
-│  │ GitHub │  │ Slack  │  │ Database │  │ Monitoring │      │
-│  └────────┘  └────────┘  └──────────┘  └────────────┘      │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                         DevOps Brain                                 │
+├─────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐             │
+│  │   CLI       │    │  REST API   │    │  Webhooks   │             │
+│  └──────┬──────┘    └──────┬──────┘    └──────┬──────┘             │
+│         │                  │                   │                    │
+│         └──────────────────┼───────────────────┘                    │
+│                            ▼                                        │
+│                    ┌───────────────┐                                │
+│                    │  Orchestrator │                                │
+│                    └───────┬───────┘                                │
+│                            │                                        │
+│         ┌──────────────────┼──────────────────┐                    │
+│         ▼                  ▼                  ▼                     │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐              │
+│  │  Security   │   │   Testing   │   │    Docs     │   ...        │
+│  │   Agent     │   │   Agent     │   │   Agent     │              │
+│  └──────┬──────┘   └──────┬──────┘   └──────┬──────┘              │
+│         │                  │                  │                    │
+│         └──────────────────┼──────────────────┘                    │
+│                            ▼                                        │
+│                    ┌───────────────┐                                │
+│                    │ MCP Adapters  │                                │
+│                    └───────┬───────┘                                │
+│                            │                                        │
+│         ┌──────────────────┼──────────────────┐                    │
+│         ▼                  ▼                  ▼                     │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐              │
+│  │   GitHub    │   │   Slack     │   │  Monitoring │              │
+│  └─────────────┘   └─────────────┘   └─────────────┘              │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ## License
@@ -215,6 +238,7 @@ MIT License - See LICENSE file for details.
 
 1. Fork the repository
 2. Create a feature branch
-3. Submit a pull request
+3. Write tests for your changes
+4. Submit a pull request
 
 All changes must be described using Pull Requests as per project guidelines.

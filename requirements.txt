@@ -1,17 +1,24 @@
 # DevOps Brain - Python Dependencies
+
 # Core framework
 pydantic>=2.5.0
 pyyaml>=6.0.1
 python-dotenv>=1.0.0
 
+# Web framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
 # Async support
-asyncio>=3.4.3
 aiohttp>=3.9.0
 httpx>=0.25.0
 
-# Database adapters
+# Database
 asyncpg>=0.29.0
-sqlalchemy>=2.0.23
+sqlalchemy[asyncio]>=2.0.23
+
+# Caching
+redis>=5.0.0
 
 # Monitoring integrations
 datadog>=0.47.0
@@ -23,10 +30,13 @@ PyGithub>=2.1.0
 # Slack integration
 slack-sdk>=3.23.0
 
+# CLI
+typer>=0.9.0
+rich>=13.7.0
+
 # Utilities
 structlog>=23.2.0
 tenacity>=8.2.3
-rich>=13.7.0
 
 # Testing
 pytest>=7.4.3
@@ -39,3 +49,7 @@ types-pyyaml>=6.0.12
 
 # Linting
 ruff>=0.1.6
+
+# Security scanning
+bandit>=1.7.0
+safety>=2.3.0

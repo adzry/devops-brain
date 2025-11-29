@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: devops-brain-api-pdb
+  namespace: devops-brain
+  labels:
+    app.kubernetes.io/name: devops-brain
+    app.kubernetes.io/component: api
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: devops-brain
+      app.kubernetes.io/component: api
