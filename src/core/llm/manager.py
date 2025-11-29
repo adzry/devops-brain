@@ -14,6 +14,7 @@ from typing import Any, Optional
 
 from .base import BaseLLM, LLMConfig, LLMResponse, Message
 from .providers import get_provider
+from .cost_tracker import CostTracker, Budget
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,7 @@ class LLMManager:
         fallback_configs: Optional[list[LLMConfig]] = None,
         cache_ttl: int = 3600,
         cache_max_size: int = 1000,
+        budget: Optional[Budget] = None,
     ):
         self.primary_config = primary_config
         self.fallback_configs = fallback_configs or []
@@ -66,6 +68,9 @@ class LLMManager:
         self._stats: dict[str, ProviderStats] = {}
         self._lock = asyncio.Lock()
         self._initialized = False
+        
+        # Cost tracking
+        self._cost_tracker = CostTracker(budget=budget)
     
     async def initialize(self) -> None:
         """Initialize all providers."""
@@ -131,6 +136,14 @@ class LLMManager:
                 stats.requests += 1
                 stats.total_tokens += response.total_tokens
                 stats.total_latency_ms += latency
+                
+                # Track costs
+                self._cost_tracker.record_usage(
+                    provider=provider.config.provider,
+                    model=response.model,
+                    prompt_tokens=response.prompt_tokens,
+                    completion_tokens=response.completion_tokens,
+                )
                 
                 # Cache response
                 if use_cache and not tools:
@@ -237,6 +250,7 @@ class LLMManager:
                 "max_size": self.cache_max_size,
                 "ttl_seconds": self.cache_ttl,
             },
+            "costs": self._cost_tracker.get_usage_stats(),
         }
         
         for provider, pstats in self._stats.items():
@@ -254,6 +268,11 @@ class LLMManager:
             }
         
         return stats
+    
+    @property
+    def cost_tracker(self) -> CostTracker:
+        """Get cost tracker."""
+        return self._cost_tracker
     
     async def clear_cache(self) -> int:
         """Clear the response cache."""

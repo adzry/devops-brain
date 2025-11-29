@@ -11,6 +11,7 @@ from typing import Any, Optional
 from .base import MemoryConfig, MemoryEntry, MemoryType
 from .conversation import ConversationMemory
 from .vector import VectorMemory
+from .persistence import MemoryPersistence
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ class MemoryManager:
         self,
         config: Optional[MemoryConfig] = None,
         agent_id: Optional[str] = None,
+        db_connection=None,
     ):
         self.config = config or MemoryConfig()
         self.agent_id = agent_id
@@ -40,11 +42,26 @@ class MemoryManager:
         # Working memory (short-term, current task)
         self._working_memory: dict[str, Any] = {}
         self._lock = asyncio.Lock()
+        
+        # Persistence
+        self._persistence = MemoryPersistence(db_connection)
     
     async def initialize(self) -> None:
         """Initialize all memory systems."""
         await self.semantic.initialize()
+        await self._persistence.start()
+        
+        # Load persisted memories
+        if self.agent_id:
+            persisted = await self._persistence.load(agent_id=self.agent_id)
+            # TODO: Restore memories to stores
+        
         logger.info(f"Memory manager initialized for agent {self.agent_id}")
+    
+    async def shutdown(self) -> None:
+        """Shutdown memory manager and persist data."""
+        await self._persistence.stop()
+        logger.info(f"Memory manager shut down for agent {self.agent_id}")
     
     # ========================================================================
     # Conversation Memory
@@ -107,7 +124,12 @@ class MemoryManager:
             metadata=metadata,
             agent_id=self.agent_id,
         )
-        return await self.semantic.add(entry)
+        memory_id = await self.semantic.add(entry)
+        
+        # Persist to database
+        await self._persistence.save(entry)
+        
+        return memory_id
     
     async def recall(
         self,
@@ -249,6 +271,9 @@ class MemoryManager:
         """Cleanup and consolidate memories."""
         results = {
             "semantic_consolidated": await self.semantic.consolidate(),
+            "persistence_consolidated": await self._persistence.consolidate(
+                agent_id=self.agent_id,
+            ),
         }
         return results
     
