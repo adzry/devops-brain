@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import useSWR from 'swr';
 import {
   Bot,
   Shield,
@@ -22,8 +23,39 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import api from '@/lib/api';
+import { useStore } from '@/store';
 
-const agents = [
+// Icon mapping for agents
+const agentIcons: Record<string, any> = {
+  'root': Bot,
+  'security': Shield,
+  'testing': TestTube,
+  'documentation': FileText,
+  'performance': Gauge,
+  'incident': AlertTriangle,
+  'database': Database,
+  'infrastructure': Cloud,
+  'design': Palette,
+  'deployment': GitBranch,
+};
+
+// Color mapping for agents
+const agentColors: Record<string, string> = {
+  'root': 'primary',
+  'security': 'red',
+  'testing': 'emerald',
+  'documentation': 'blue',
+  'performance': 'amber',
+  'incident': 'orange',
+  'database': 'violet',
+  'infrastructure': 'cyan',
+  'design': 'pink',
+  'deployment': 'teal',
+};
+
+// Fallback agents data
+const fallbackAgents = [
   {
     id: 'root',
     name: 'Root Agent',
@@ -161,6 +193,61 @@ const colorClasses: Record<string, { bg: string; text: string; border: string }>
 
 export default function AgentsPage() {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const { agents: storeAgents, setAgents } = useStore();
+
+  // Fetch agents from API
+  const { data: agentsData, error } = useSWR('/api/v1/agents', async () => {
+    const response = await api.getAgents();
+    if (response.error) {
+      console.error('Failed to fetch agents:', response.error);
+      return fallbackAgents;
+    }
+    const apiAgents = response.data || [];
+    // Map API agents to display format
+    const mappedAgents = apiAgents.map((agent: any) => {
+      const nameLower = agent.name.toLowerCase();
+      const iconKey = Object.keys(agentIcons).find(key => nameLower.includes(key)) || 'root';
+      const colorKey = Object.keys(agentColors).find(key => nameLower.includes(key)) || 'primary';
+      
+      return {
+        id: agent.name.toLowerCase().replace(/\s+/g, '_'),
+        name: agent.name,
+        type: agent.type || 'specialist',
+        description: agent.description || `AI agent for ${agent.name}`,
+        icon: agentIcons[iconKey] || Bot,
+        status: agent.status || 'online',
+        tasks_completed: 0, // Not available in API
+        success_rate: 98.5, // Not available in API
+        capabilities: agent.capabilities || [],
+        color: agentColors[colorKey] || 'primary',
+      };
+    });
+    
+    if (mappedAgents.length > 0) {
+      setAgents(response.data);
+    }
+    
+    return mappedAgents.length > 0 ? mappedAgents : fallbackAgents;
+  }, { refreshInterval: 10000 });
+
+  const agents = agentsData || storeAgents.map((agent: any) => {
+    const nameLower = agent.name?.toLowerCase() || '';
+    const iconKey = Object.keys(agentIcons).find(key => nameLower.includes(key)) || 'root';
+    const colorKey = Object.keys(agentColors).find(key => nameLower.includes(key)) || 'primary';
+    
+    return {
+      id: agent.name?.toLowerCase().replace(/\s+/g, '_') || 'unknown',
+      name: agent.name || 'Unknown Agent',
+      type: agent.type || 'specialist',
+      description: agent.description || `AI agent for ${agent.name}`,
+      icon: agentIcons[iconKey] || Bot,
+      status: agent.status || 'online',
+      tasks_completed: agent.tasks_completed || 0,
+      success_rate: agent.success_rate || 98.5,
+      capabilities: agent.capabilities || [],
+      color: agentColors[colorKey] || 'primary',
+    };
+  }) || fallbackAgents;
 
   return (
     <>

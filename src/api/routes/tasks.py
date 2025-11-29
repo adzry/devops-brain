@@ -335,6 +335,10 @@ async def list_tasks(
                 "agent": t.agent,
                 "action": t.action,
                 "duration_ms": t.duration_ms,
+                "created_at": (t.created_at.isoformat() if t.created_at else (t.started_at.isoformat() if t.started_at else None)),
+                "completed_at": t.completed_at.isoformat() if hasattr(t, 'completed_at') and t.completed_at else None,
+                "result": t.result,
+                "error": t.error,
             }
             for t in all_tasks
         ],

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import useSWR from 'swr';
 import {
   Activity,
   Bot,
@@ -20,59 +21,19 @@ import { Card, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import api from '@/lib/api';
+import { useStore } from '@/store';
 
-// Stats data
-const stats = [
-  {
-    label: 'Active Tasks',
-    value: '24',
-    change: '+12%',
-    trend: 'up' as const,
-    icon: Activity,
-    color: 'primary',
-  },
-  {
-    label: 'Agents Online',
-    value: '10',
-    change: '100%',
-    trend: 'up' as const,
-    icon: Bot,
-    color: 'emerald',
-  },
-  {
-    label: 'Success Rate',
-    value: '98.5%',
-    change: '+2.3%',
-    trend: 'up' as const,
-    icon: CheckCircle,
-    color: 'blue',
-  },
-  {
-    label: 'Avg Response',
-    value: '1.2s',
-    change: '-0.3s',
-    trend: 'down' as const,
-    icon: Clock,
-    color: 'amber',
-  },
-];
-
-// Recent tasks data
-const recentTasks = [
-  { id: '1', title: 'Security vulnerability scan', agent: 'Security Agent', status: 'completed', time: '2 min ago' },
-  { id: '2', title: 'Generate UI components from Figma', agent: 'Design Agent', status: 'running', time: '5 min ago' },
-  { id: '3', title: 'Run test suite', agent: 'Testing Agent', status: 'pending', time: '10 min ago' },
-  { id: '4', title: 'Deploy to staging', agent: 'Deploy Agent', status: 'completed', time: '15 min ago' },
-  { id: '5', title: 'Code review PR #142', agent: 'Code Review Agent', status: 'completed', time: '20 min ago' },
-];
-
-// Agents data
-const agents = [
-  { name: 'Root Agent', status: 'online', tasks: 3, icon: Bot },
-  { name: 'Security Agent', status: 'busy', tasks: 2, icon: Shield },
-  { name: 'Design Agent', status: 'online', tasks: 0, icon: Palette },
-  { name: 'Database Agent', status: 'online', tasks: 1, icon: Database },
-];
+// Helper to format relative time
+function formatRelativeTime(date: string | Date): string {
+  const now = new Date();
+  const then = new Date(date);
+  const seconds = Math.floor((now.getTime() - then.getTime()) / 1000);
+  if (seconds < 60) return 'just now';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  return `${Math.floor(seconds / 86400)}d ago`;
+}
 
 // Quick actions
 const quickActions = [
@@ -102,10 +63,99 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
+  const { health, agents: storeAgents, tasks: storeTasks, setHealth, setAgents } = useStore();
+
+  // Fetch health and stats
+  const { data: healthData } = useSWR('/health', async () => {
+    const response = await api.getHealth();
+    if (response.data) {
+      setHealth(response.data);
+    }
+    return response.data;
+  }, { refreshInterval: 5000 });
+
+  // Fetch agents
+  const { data: agentsData } = useSWR('/api/v1/agents', async () => {
+    const response = await api.getAgents();
+    if (response.data) {
+      setAgents(response.data);
+    }
+    return response.data;
+  }, { refreshInterval: 10000 });
+
+  // Fetch recent tasks
+  const { data: tasksData } = useSWR('/api/v1/tasks?limit=5', async () => {
+    const response = await api.getTasks(5);
+    if (response.data?.tasks) {
+      return response.data.tasks;
+    }
+    return [];
+  }, { refreshInterval: 5000 });
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Calculate stats from real data
+  const totalTasks = health?.tasks_completed || 0;
+  const agentsOnline = agentsData?.length || storeAgents.length || 0;
+  const successRate = health?.tasks_completed 
+    ? ((health.tasks_completed / (health.tasks_completed + (health.tasks_pending || 0))) * 100).toFixed(1)
+    : '0';
+  
+  const stats = [
+    {
+      label: 'Active Tasks',
+      value: String(storeTasks.filter(t => t.status === 'running' || t.status === 'pending').length || 0),
+      change: '+12%',
+      trend: 'up' as const,
+      icon: Activity,
+      color: 'primary',
+    },
+    {
+      label: 'Agents Online',
+      value: String(agentsOnline),
+      change: '100%',
+      trend: 'up' as const,
+      icon: Bot,
+      color: 'emerald',
+    },
+    {
+      label: 'Success Rate',
+      value: `${successRate}%`,
+      change: '+2.3%',
+      trend: 'up' as const,
+      icon: CheckCircle,
+      color: 'blue',
+    },
+    {
+      label: 'Avg Response',
+      value: '1.2s',
+      change: '-0.3s',
+      trend: 'down' as const,
+      icon: Clock,
+      color: 'amber',
+    },
+  ];
+
+  // Recent tasks from API
+  const recentTasks = (tasksData || storeTasks.slice(0, 5)).map((task: any) => ({
+    id: task.task_id || task.id,
+    title: task.action,
+    agent: task.agent,
+    status: task.status,
+    time: formatRelativeTime(task.created_at),
+  }));
+
+  // Agents from API
+  const agents = (agentsData || storeAgents).slice(0, 4).map((agent: any) => ({
+    name: agent.name,
+    status: agent.status || 'online',
+    tasks: agent.active_tasks || 0,
+    icon: agent.name.toLowerCase().includes('security') ? Shield :
+          agent.name.toLowerCase().includes('design') ? Palette :
+          agent.name.toLowerCase().includes('database') ? Database : Bot,
+  }));
 
   if (!mounted) return null;
 
