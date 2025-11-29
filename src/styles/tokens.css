@@ -1,0 +1,377 @@
+/**
+ * DevOps Brain Design Tokens
+ * Auto-generated from Figma Design System
+ * 
+ * Usage: Import this file in your main CSS or include in your build process
+ * These tokens are the single source of truth for all design values.
+ */
+
+:root {
+  /* ═══════════════════════════════════════════════════════════════
+     COLORS - Primitive
+     Base color values that semantic colors reference
+     ═══════════════════════════════════════════════════════════════ */
+  
+  /* Indigo - Primary Brand */
+  --color-indigo-50: #EEF2FF;
+  --color-indigo-100: #E0E7FF;
+  --color-indigo-200: #C7D2FE;
+  --color-indigo-300: #A5B4FC;
+  --color-indigo-400: #818CF8;
+  --color-indigo-500: #6366F1;
+  --color-indigo-600: #4F46E5;
+  --color-indigo-700: #4338CA;
+  --color-indigo-800: #3730A3;
+  --color-indigo-900: #312E81;
+  
+  /* Rose - Secondary Accent */
+  --color-rose-50: #FFF1F2;
+  --color-rose-100: #FFE4E6;
+  --color-rose-200: #FECDD3;
+  --color-rose-300: #FDA4AF;
+  --color-rose-400: #FB7185;
+  --color-rose-500: #F43F5E;
+  --color-rose-600: #E11D48;
+  --color-rose-700: #BE123C;
+  --color-rose-800: #9F1239;
+  --color-rose-900: #881337;
+  
+  /* Slate - Neutrals */
+  --color-slate-50: #F8FAFC;
+  --color-slate-100: #F1F5F9;
+  --color-slate-200: #E2E8F0;
+  --color-slate-300: #CBD5E1;
+  --color-slate-400: #94A3B8;
+  --color-slate-500: #64748B;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1E293B;
+  --color-slate-900: #0F172A;
+  --color-slate-950: #020617;
+  
+  /* Semantic Colors - Success */
+  --color-emerald-400: #34D399;
+  --color-emerald-500: #10B981;
+  --color-emerald-600: #059669;
+  
+  /* Semantic Colors - Warning */
+  --color-amber-400: #FBBF24;
+  --color-amber-500: #F59E0B;
+  --color-amber-600: #D97706;
+  
+  /* Semantic Colors - Error */
+  --color-red-400: #F87171;
+  --color-red-500: #EF4444;
+  --color-red-600: #DC2626;
+  
+  /* Semantic Colors - Info */
+  --color-blue-400: #60A5FA;
+  --color-blue-500: #3B82F6;
+  --color-blue-600: #2563EB;
+  
+  /* ═══════════════════════════════════════════════════════════════
+     COLORS - Semantic
+     Use these in your components, not primitive colors
+     ═══════════════════════════════════════════════════════════════ */
+  
+  /* Brand */
+  --color-primary: var(--color-indigo-500);
+  --color-primary-hover: var(--color-indigo-600);
+  --color-primary-active: var(--color-indigo-700);
+  --color-primary-subtle: var(--color-indigo-500) / 0.1;
+  
+  --color-secondary: var(--color-rose-500);
+  --color-secondary-hover: var(--color-rose-600);
+  
+  /* Backgrounds */
+  --color-background: var(--color-slate-900);
+  --color-background-alt: var(--color-slate-950);
+  --color-surface: var(--color-slate-800);
+  --color-surface-hover: var(--color-slate-700);
+  --color-surface-elevated: var(--color-slate-700);
+  
+  /* Text */
+  --color-text: var(--color-slate-50);
+  --color-text-secondary: var(--color-slate-300);
+  --color-text-muted: var(--color-slate-400);
+  --color-text-subtle: var(--color-slate-500);
+  
+  /* Borders */
+  --color-border: var(--color-slate-700);
+  --color-border-hover: var(--color-slate-600);
+  --color-border-subtle: var(--color-slate-800);
+  
+  /* States */
+  --color-success: var(--color-emerald-500);
+  --color-success-subtle: var(--color-emerald-500) / 0.15;
+  --color-warning: var(--color-amber-500);
+  --color-warning-subtle: var(--color-amber-500) / 0.15;
+  --color-error: var(--color-red-500);
+  --color-error-subtle: var(--color-red-500) / 0.15;
+  --color-info: var(--color-blue-500);
+  --color-info-subtle: var(--color-blue-500) / 0.15;
+  
+  /* Focus Ring */
+  --color-focus-ring: var(--color-indigo-500) / 0.5;
+  
+  /* ═══════════════════════════════════════════════════════════════
+     TYPOGRAPHY
+     Font families, sizes, weights, and line heights
+     ═══════════════════════════════════════════════════════════════ */
+  
+  /* Font Families */
+  --font-display: 'Cal Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+  
+  /* Font Sizes */
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.875rem;    /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.25rem;     /* 20px */
+  --text-2xl: 1.5rem;     /* 24px */
+  --text-3xl: 1.875rem;   /* 30px */
+  --text-4xl: 2.25rem;    /* 36px */
+  --text-5xl: 3rem;       /* 48px */
+  --text-6xl: 3.75rem;    /* 60px */
+  
+  /* Font Weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  
+  /* Line Heights */
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+  
+  /* Letter Spacing */
+  --tracking-tighter: -0.05em;
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  
+  /* ═══════════════════════════════════════════════════════════════
+     SPACING
+     Consistent spacing scale for margins, padding, gaps
+     ═══════════════════════════════════════════════════════════════ */
+  
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0-5: 0.125rem;  /* 2px */
+  --space-1: 0.25rem;     /* 4px */
+  --space-1-5: 0.375rem;  /* 6px */
+  --space-2: 0.5rem;      /* 8px */
+  --space-2-5: 0.625rem;  /* 10px */
+  --space-3: 0.75rem;     /* 12px */
+  --space-3-5: 0.875rem;  /* 14px */
+  --space-4: 1rem;        /* 16px */
+  --space-5: 1.25rem;     /* 20px */
+  --space-6: 1.5rem;      /* 24px */
+  --space-7: 1.75rem;     /* 28px */
+  --space-8: 2rem;        /* 32px */
+  --space-9: 2.25rem;     /* 36px */
+  --space-10: 2.5rem;     /* 40px */
+  --space-11: 2.75rem;    /* 44px */
+  --space-12: 3rem;       /* 48px */
+  --space-14: 3.5rem;     /* 56px */
+  --space-16: 4rem;       /* 64px */
+  --space-20: 5rem;       /* 80px */
+  --space-24: 6rem;       /* 96px */
+  --space-28: 7rem;       /* 112px */
+  --space-32: 8rem;       /* 128px */
+  
+  /* ═══════════════════════════════════════════════════════════════
+     BORDER RADIUS
+     Consistent border radius scale for rounded corners
+     ═══════════════════════════════════════════════════════════════ */
+  
+  --radius-none: 0;
+  --radius-sm: 0.25rem;   /* 4px */
+  --radius-md: 0.375rem;  /* 6px */
+  --radius-lg: 0.5rem;    /* 8px */
+  --radius-xl: 0.75rem;   /* 12px */
+  --radius-2xl: 1rem;     /* 16px */
+  --radius-3xl: 1.5rem;   /* 24px */
+  --radius-full: 9999px;
+  
+  /* ═══════════════════════════════════════════════════════════════
+     SHADOWS
+     Box shadows for depth and elevation
+     ═══════════════════════════════════════════════════════════════ */
+  
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+  
+  /* Glow Effects */
+  --shadow-glow-sm: 0 0 10px rgb(99 102 241 / 0.3);
+  --shadow-glow-md: 0 0 20px rgb(99 102 241 / 0.4);
+  --shadow-glow-lg: 0 0 40px rgb(99 102 241 / 0.3);
+  --shadow-glow-rose: 0 0 20px rgb(244 63 94 / 0.4);
+  --shadow-glow-emerald: 0 0 20px rgb(16 185 129 / 0.4);
+  
+  /* Colored Shadows */
+  --shadow-primary: 0 4px 14px -3px rgb(99 102 241 / 0.5);
+  --shadow-secondary: 0 4px 14px -3px rgb(244 63 94 / 0.5);
+  
+  /* ═══════════════════════════════════════════════════════════════
+     ANIMATION
+     Durations and easing functions
+     ═══════════════════════════════════════════════════════════════ */
+  
+  /* Durations */
+  --duration-75: 75ms;
+  --duration-100: 100ms;
+  --duration-150: 150ms;
+  --duration-200: 200ms;
+  --duration-300: 300ms;
+  --duration-500: 500ms;
+  --duration-700: 700ms;
+  --duration-1000: 1000ms;
+  
+  /* Easing */
+  --ease-linear: linear;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-elastic: cubic-bezier(0.68, -0.6, 0.32, 1.6);
+  
+  /* ═══════════════════════════════════════════════════════════════
+     Z-INDEX
+     Layer management for overlapping elements
+     ═══════════════════════════════════════════════════════════════ */
+  
+  --z-below: -1;
+  --z-base: 0;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-fixed: 30;
+  --z-modal-backdrop: 40;
+  --z-modal: 50;
+  --z-popover: 60;
+  --z-tooltip: 70;
+  --z-toast: 80;
+  
+  /* ═══════════════════════════════════════════════════════════════
+     BREAKPOINTS (for reference - use in media queries)
+     ═══════════════════════════════════════════════════════════════ */
+  
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   UTILITY CLASSES
+   Common utility classes using design tokens
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Text Gradient */
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-indigo-400), var(--color-rose-400));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow Effect */
+.glow {
+  box-shadow: var(--shadow-glow-md);
+}
+
+.glow-hover:hover {
+  box-shadow: var(--shadow-glow-lg);
+}
+
+/* Glass Effect */
+.glass {
+  background: rgb(30 41 59 / 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgb(51 65 85 / 0.5);
+}
+
+/* Focus Ring */
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-background), 0 0 0 4px var(--color-primary);
+}
+
+/* Animate on Scroll */
+.animate-fade-in {
+  animation: fadeIn var(--duration-300) var(--ease-out);
+}
+
+.animate-slide-up {
+  animation: slideUp var(--duration-300) var(--ease-out);
+}
+
+.animate-scale-in {
+  animation: scaleIn var(--duration-200) var(--ease-out);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from { 
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to { 
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: var(--shadow-glow-sm);
+  }
+  50% {
+    box-shadow: var(--shadow-glow-lg);
+  }
+}
+
+/* Skeleton Loading */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-slate-800) 25%,
+    var(--color-slate-700) 50%,
+    var(--color-slate-800) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

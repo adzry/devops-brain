@@ -4,9 +4,10 @@ A comprehensive AI-powered DevOps automation platform featuring cloud agents, au
 
 ## Features
 
-- **🤖 Specialist Agents** - AI agents for security, testing, documentation, performance, incidents, database, and infrastructure
+- **🤖 Specialist Agents** - AI agents for security, testing, documentation, performance, incidents, database, infrastructure, and **design**
 - **⚙️ Orchestrator** - Central coordinator for task routing and agent management
-- **🔌 MCP Adapters** - Integrations with GitHub, Slack, databases, and monitoring services
+- **🔌 Unified MCP** - Blended integrations with GitHub, Slack, databases, monitoring, and **Figma**
+- **🎨 Design System** - Complete design-to-code workflow with Figma integration
 - **🚀 REST API** - FastAPI-based API for external access
 - **💻 CLI** - Command-line interface for local interactions
 - **🐳 Docker** - Containerized deployment with docker-compose
@@ -82,13 +83,22 @@ devops-brain/
 │   ├── core/                   # Core components
 │   │   ├── orchestrator.py     # Agent orchestrator
 │   │   └── message_queue.py    # Priority message queue
+│   ├── ui/                     # UI component library
+│   │   ├── components/         # React components
+│   │   └── pages/              # Page templates
+│   ├── styles/                 # Design tokens
+│   │   └── tokens.css          # CSS custom properties
 │   ├── api/                    # FastAPI application
 │   │   ├── main.py
 │   │   └── routes/
 │   └── cli/                    # CLI application
 │       └── main.py
-├── mcp/                        # MCP adapters
+├── mcp/                        # Unified MCP adapters
+│   ├── mcp_manager.py          # Unified MCP manager
 │   └── adapters/
+│       ├── figma_adapter.py    # Figma integration
+│       ├── github_adapter.py
+│       └── slack_adapter.py
 ├── workflows/                  # Automation workflows
 ├── tests/                      # Test suite
 ├── docker/                     # Docker configurations
@@ -209,26 +219,85 @@ mypy src/ agents/
 │                    │  Orchestrator │                                │
 │                    └───────┬───────┘                                │
 │                            │                                        │
-│         ┌──────────────────┼──────────────────┐                    │
-│         ▼                  ▼                  ▼                     │
-│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐              │
-│  │  Security   │   │   Testing   │   │    Docs     │   ...        │
-│  │   Agent     │   │   Agent     │   │   Agent     │              │
-│  └──────┬──────┘   └──────┬──────┘   └──────┬──────┘              │
-│         │                  │                  │                    │
-│         └──────────────────┼──────────────────┘                    │
+│    ┌───────────────────────┼───────────────────────┐               │
+│    ▼           ▼           ▼           ▼           ▼               │
+│ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐            │
+│ │Security│ │Testing │ │  Docs  │ │ Design │ │Infra   │  ...       │
+│ │ Agent  │ │ Agent  │ │ Agent  │ │ Agent  │ │ Agent  │            │
+│ └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘            │
+│     │          │          │          │          │                  │
+│     └──────────┴──────────┴──────────┴──────────┘                  │
 │                            ▼                                        │
-│                    ┌───────────────┐                                │
-│                    │ MCP Adapters  │                                │
-│                    └───────┬───────┘                                │
-│                            │                                        │
-│         ┌──────────────────┼──────────────────┐                    │
-│         ▼                  ▼                  ▼                     │
-│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐              │
-│  │   GitHub    │   │   Slack     │   │  Monitoring │              │
-│  └─────────────┘   └─────────────┘   └─────────────┘              │
+│              ┌──────────────────────────┐                          │
+│              │    Unified MCP Manager   │                          │
+│              └────────────┬─────────────┘                          │
+│                           │                                         │
+│    ┌──────────────────────┼──────────────────────┐                 │
+│    ▼          ▼           ▼           ▼          ▼                 │
+│ ┌──────┐ ┌──────┐   ┌──────────┐ ┌──────┐  ┌────────┐             │
+│ │GitHub│ │Slack │   │Monitoring│ │  DB  │  │ Figma  │             │
+│ └──────┘ └──────┘   └──────────┘ └──────┘  └────────┘             │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+## Design System & Figma Integration
+
+DevOps Brain includes a powerful design-to-code workflow:
+
+### Features
+
+- **🎨 Design Token Sync** - Extract colors, typography, spacing from Figma
+- **🧩 Component Generation** - Generate React/Vue/Svelte components
+- **🔍 Design Audits** - Check for consistency and accessibility
+- **📦 UI Component Library** - Ready-to-use components with Tailwind
+
+### Design Tokens
+
+```css
+/* Auto-synced from Figma */
+:root {
+  --color-primary: #6366F1;
+  --color-secondary: #F43F5E;
+  --color-background: #0F172A;
+  --font-display: 'Cal Sans', system-ui;
+  --space-4: 1rem;
+  --radius-xl: 0.75rem;
+}
+```
+
+### Quick Start with Design System
+
+```bash
+# Sync design tokens from Figma
+curl -X POST http://localhost:8000/api/v1/design/sync \
+  -H "Content-Type: application/json" \
+  -d '{"figma_file_key": "YOUR_FILE_KEY"}'
+
+# Generate a component
+curl -X POST http://localhost:8000/api/v1/design/components/generate \
+  -H "Content-Type: application/json" \
+  -d '{"component_type": "button", "component_name": "PrimaryButton"}'
+
+# Audit design consistency
+curl -X POST http://localhost:8000/api/v1/design/audit \
+  -H "Content-Type: application/json" \
+  -d '{"target_path": "src/components"}'
+```
+
+### UI Components
+
+Pre-built components using the design system:
+
+| Component | Description |
+|-----------|-------------|
+| `Button` | Primary, secondary, ghost, danger variants |
+| `Input` | Text input with label, error, hint support |
+| `Card` | Container with default, elevated, glass variants |
+| `Modal` | Accessible modal with animations |
+| `Navbar` | Fixed navigation with responsive design |
+| `Badge` | Status indicators |
+| `Alert` | Info, success, warning, error messages |
+| `Spinner` | Loading indicators |
 
 ## License
 

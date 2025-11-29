@@ -244,6 +244,38 @@ agents:
       drift_detection: true
       cost_alerts: true
 
+  design_agent:
+    name: "Design System Agent"
+    type: "specialist"
+    description: "Design system management, Figma integration, and UI component generation"
+    model: "gpt-5.1-codex-high"
+    priority: 2
+    capabilities:
+      - design_token_sync
+      - component_generation
+      - figma_integration
+      - accessibility_audit
+      - style_guide_generation
+      - design_to_code
+      - ui_consistency_check
+      - theme_management
+    system_prompt_file: "prompts/design_agent.md"
+    settings:
+      figma_enabled: true
+      supported_frameworks:
+        - "react"
+        - "vue"
+        - "svelte"
+        - "html"
+      styling_methods:
+        - "tailwind"
+        - "css-modules"
+        - "styled-components"
+      accessibility_level: "WCAG_AA"
+      auto_sync_tokens: true
+      generate_tests: false
+      generate_stories: false
+
 # =============================================================================
 # ORCHESTRATION SETTINGS
 # =============================================================================
@@ -274,6 +306,8 @@ orchestration:
       agent: "database_agent"
     - pattern: "infrastructure|terraform|kubernetes"
       agent: "infrastructure_agent"
+    - pattern: "design|figma|ui|component|style|theme|token"
+      agent: "design_agent"
 
   # Inter-agent communication
   collaboration:
@@ -284,3 +318,5 @@ orchestration:
       - "deployment.completed"
       - "incident.detected"
       - "security.vulnerability_found"
+      - "design.tokens_synced"
+      - "design.component_generated"
